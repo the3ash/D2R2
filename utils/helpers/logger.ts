@@ -7,11 +7,33 @@ export function setupEnhancedLogging() {
   const originalInfo = console.info;
   const originalDebug = console.debug;
 
-  // Check if we're in development environment
-  // In Chrome extensions, this is a reasonable way to check development vs production
-  const isDevelopment = !chrome.runtime.getManifest().update_url;
+  // Use import.meta.env.PROD to detect if it's a production build
+  // This is an environment variable provided by Vite during build time
+  const isBuildProduction = import.meta.env.PROD;
 
-  if (isDevelopment) {
+  // Runtime environment detection (not during build)
+  let isRuntimeProduction = false;
+
+  // Only try to use chrome API when code is actually running (not during build)
+  try {
+    // Browser runtime, use more precise detection
+    if (
+      typeof window !== "undefined" &&
+      window.chrome &&
+      window.chrome.runtime &&
+      window.chrome.runtime.getManifest
+    ) {
+      // Check if the extension is running in production by checking update_url
+      isRuntimeProduction = !!window.chrome.runtime.getManifest().update_url;
+    }
+  } catch (e) {
+    // Ignore errors, use build-time determined environment
+  }
+
+  // Final environment determination: if either build-time or runtime determines production, it's production
+  const isProduction = isBuildProduction || isRuntimeProduction;
+
+  if (!isProduction) {
     // Only override console methods in development environment
     // Add more detailed logging with timestamp
     console.log = function (...args) {
@@ -69,11 +91,35 @@ export function setupEnhancedLogging() {
 
 // Create utility functions to check environment
 export function isDevelopment(): boolean {
-  return !chrome.runtime.getManifest().update_url;
+  // First check Vite build environment variable
+  if (import.meta.env.PROD) {
+    return false;
+  }
+
+  // If not in build phase, try runtime detection
+  if (
+    typeof window !== "undefined" &&
+    typeof chrome !== "undefined" &&
+    chrome.runtime
+  ) {
+    try {
+      if (
+        chrome.runtime.getManifest &&
+        chrome.runtime.getManifest().update_url
+      ) {
+        return false;
+      }
+    } catch (e) {
+      // If detection fails, default to development environment
+    }
+  }
+
+  // Default to development environment
+  return true;
 }
 
 export function isProduction(): boolean {
-  return !!chrome.runtime.getManifest().update_url;
+  return !isDevelopment();
 }
 
 // Enhanced error handling system

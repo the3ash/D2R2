@@ -36,7 +36,7 @@ export function formatWorkerUrl(url: string): string {
  * Kept for backward compatibility
  */
 export function setupEnhancedLogging() {
-  // 直接调用从 logger.ts 导入的函数（使用重命名避免冲突）
+  // Directly call functions imported from logger.ts (using renaming to avoid conflicts)
   setupLogging();
 }
 

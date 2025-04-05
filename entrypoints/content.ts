@@ -1,12 +1,37 @@
 import { defineContentScript } from "wxt/utils/define-content-script";
 import "./content/toast.css";
+import { isDevelopment } from "../utils/helpers/logger";
 
 declare const chrome: any;
+
+// Create logging utility functions that only display logs in development environment
+const log = (...args: any[]) => {
+  if (isDevelopment()) {
+    console.log(...args);
+  }
+};
+
+const warn = (...args: any[]) => {
+  if (isDevelopment()) {
+    console.warn(...args);
+  }
+};
+
+// Add error logging function
+const error = (...args: any[]) => {
+  // Errors are always logged, but more detailed in development environment
+  if (isDevelopment()) {
+    console.error(...args);
+  } else {
+    // Keep error logging concise in production environment
+    console.error(args[0]);
+  }
+};
 
 export default defineContentScript({
   matches: ["<all_urls>"],
   main() {
-    console.log("D2R2 content script loaded");
+    log("D2R2 content script loaded");
 
     // Track if toast container exists
     let toastContainerExists = false;
@@ -27,9 +52,9 @@ export default defineContentScript({
         if (document.body) {
           document.body.appendChild(container);
           toastContainerExists = true;
-          console.log("D2R2 toast container appended to body");
+          log("D2R2 toast container appended to body");
         } else {
-          console.warn(
+          warn(
             "Document body not available, will retry appending toast container"
           );
           setTimeout(appendToBody, 100);
@@ -48,9 +73,7 @@ export default defineContentScript({
     const setupMutationObserver = () => {
       // Return if browser doesn't support MutationObserver
       if (!window.MutationObserver) {
-        console.warn(
-          "MutationObserver not supported, toast container may be unstable"
-        );
+        warn("MutationObserver not supported, toast container may be unstable");
         return;
       }
 
@@ -61,7 +84,7 @@ export default defineContentScript({
           toastContainerExists &&
           !document.querySelector(".d2r2-toast-container")
         ) {
-          console.warn("Toast container was removed, re-appending to body");
+          warn("Toast container was removed, re-appending to body");
           toastContainerExists = false;
           setupToastContainer();
         }
@@ -76,9 +99,7 @@ export default defineContentScript({
       // Start observing document.body
       if (document.body) {
         observer.observe(document.body, config);
-        console.log(
-          "MutationObserver started watching for toast container removal"
-        );
+        log("MutationObserver started watching for toast container removal");
       } else {
         // If body doesn't exist, try again later
         setTimeout(() => setupMutationObserver(), 100);
@@ -271,9 +292,7 @@ export default defineContentScript({
             Date.now() - currentUploadLastActivity > 10000
           ) {
             // If no activity for 10 seconds, assume the upload is lost and remove toast
-            console.log(
-              "No upload activity detected for 10 seconds, removing toast"
-            );
+            log("No upload activity detected for 10 seconds, removing toast");
             if (currentUploadToast) {
               removeToast(currentUploadToast);
             }
@@ -338,12 +357,12 @@ export default defineContentScript({
     // Listen for messages from background
     chrome.runtime.onMessage.addListener(
       (message: any, sender: any, sendResponse: (response?: any) => void) => {
-        console.log("Content script received message:", message);
+        log("Content script received message:", message);
 
         if (message.action === "showToast") {
           const { data } = message;
           if (!data) {
-            console.error("Missing toast data");
+            error("Missing toast data");
             sendResponse({ success: false, error: "Missing toast data" });
             return true;
           }
@@ -363,8 +382,13 @@ export default defineContentScript({
             toastId = null;
           }
 
-          showToast(title, msg, type, imageUrl, msgToastId);
-          sendResponse({ success: true });
+          try {
+            showToast(title, msg, type, imageUrl, msgToastId);
+            sendResponse({ success: true });
+          } catch (e) {
+            error("Error showing toast:", e);
+            sendResponse({ success: false, error: String(e) });
+          }
           return true;
         } else if (message.action === "updateUploadStatus") {
           // Update the last activity timestamp when we receive upload status updates
@@ -378,13 +402,15 @@ export default defineContentScript({
             message.toastId === toastId &&
             currentUploadToast
           ) {
+            log("Received heartbeat for toast:", message.toastId);
             currentUploadLastActivity = Date.now();
+          } else {
+            log("Received heartbeat but no matching toast");
           }
           sendResponse({ success: true });
           return true;
         } else if (message.action === "ping") {
-          // Simple ping response to verify content script is loaded
-          console.log("Received ping from background script");
+          log("Received ping from background script");
           sendResponse({ success: true, loaded: true });
           return true;
         }
