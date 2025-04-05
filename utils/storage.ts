@@ -10,6 +10,7 @@ export interface AppConfig {
   cloudflareId: string;
   workerUrl: string;
   folderPath: string;
+  hideRoot: boolean;
   buckets: BucketConfig[];
 }
 
@@ -18,6 +19,7 @@ const defaultConfig: AppConfig = {
   cloudflareId: "",
   workerUrl: "",
   folderPath: "",
+  hideRoot: false,
   buckets: [],
 };
 

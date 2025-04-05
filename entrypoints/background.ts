@@ -748,16 +748,18 @@ export default defineBackground(() => {
           checkMenuCreation
         );
 
-        // Add "Upload to root directory" option
-        chrome.contextMenus.create(
-          {
-            id: ROOT_FOLDER_ID,
-            parentId: PARENT_MENU_ID,
-            title: "root" + " ".repeat(16),
-            contexts: ["image"],
-          },
-          checkMenuCreation
-        );
+        // Add "Upload to root directory" option if not hidden
+        if (!config.hideRoot) {
+          chrome.contextMenus.create(
+            {
+              id: ROOT_FOLDER_ID,
+              parentId: PARENT_MENU_ID,
+              title: "root" + " ".repeat(16),
+              contexts: ["image"],
+            },
+            checkMenuCreation
+          );
+        }
 
         // Create submenus for each folder
         folders.forEach((folder, index) => {

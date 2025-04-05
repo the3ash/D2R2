@@ -236,21 +236,40 @@ export default function App() {
             <label className="font-caption" htmlFor="folder-path">
               Storage Path (Optional):
             </label>
-            <input
-              id="folder-path"
-              type="text"
-              className="font-body"
-              value={config?.folderPath || ""}
-              onChange={(e) =>
-                setConfig((prev) =>
-                  prev ? { ...prev, folderPath: e.target.value } : null
-                )
-              }
-              placeholder="folder, folder/subfolder"
-              disabled={isSaving}
-              autoComplete="off"
-              spellCheck={false}
-            />
+            <div className="storage-path-container">
+              <input
+                id="folder-path"
+                type="text"
+                className="font-body"
+                value={config?.folderPath || ""}
+                onChange={(e) =>
+                  setConfig((prev) =>
+                    prev ? { ...prev, folderPath: e.target.value } : null
+                  )
+                }
+                placeholder="folder, folder/subfolder"
+                disabled={isSaving}
+                autoComplete="off"
+                spellCheck={false}
+              />
+              {config?.folderPath && (
+                <div className="hide-root-option">
+                  <label className="checkbox-label font-caption">
+                    <input
+                      type="checkbox"
+                      checked={config?.hideRoot || false}
+                      onChange={(e) =>
+                        setConfig((prev) =>
+                          prev ? { ...prev, hideRoot: e.target.checked } : null
+                        )
+                      }
+                      disabled={isSaving}
+                    />
+                    <span className="font-caption">Hide Root</span>
+                  </label>
+                </div>
+              )}
+            </div>
             <div className="input-help">
               Multiple paths allowed, separated by commas.
             </div>
