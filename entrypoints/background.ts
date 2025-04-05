@@ -22,7 +22,7 @@ const INITIALIZATION_CHECK_INTERVAL = 300; // 300ms
 // Add initialization mutex
 let isInitializing = false;
 let lastInitTime = 0;
-const MIN_INIT_INTERVAL = 500; // 最小初始化间隔时间(ms)
+const MIN_INIT_INTERVAL = 500; // Minimum initialization interval (ms)
 
 // Add page state tracking
 let activeTabId: number | null = null;
@@ -1014,10 +1014,10 @@ export default defineBackground(() => {
   // Quick initialization function for faster response
   async function quickInitialize(): Promise<boolean> {
     try {
-      // 防止并发初始化
+      // Prevent concurrent initialization
       if (isInitializing) {
         console.log("Another initialization is in progress, waiting...");
-        // 等待先前的初始化完成
+        // Wait for previous initialization to complete
         let waitCount = 0;
         while (isInitializing && waitCount < 10) {
           await new Promise((resolve) => setTimeout(resolve, 50));
@@ -1034,7 +1034,7 @@ export default defineBackground(() => {
         }
       }
 
-      // 检查初始化间隔
+      // Check initialization interval
       const now = Date.now();
       if (now - lastInitTime < MIN_INIT_INTERVAL) {
         console.log(
@@ -1043,7 +1043,7 @@ export default defineBackground(() => {
         return extensionInitialized;
       }
 
-      // 设置互斥锁和时间戳
+      // Set mutex lock and timestamp
       isInitializing = true;
       lastInitTime = now;
 
@@ -1091,7 +1091,7 @@ export default defineBackground(() => {
       console.error("Quick initialization failed:", error);
       return false;
     } finally {
-      // 释放互斥锁
+      // Release mutex lock
       isInitializing = false;
     }
   }
@@ -1099,7 +1099,7 @@ export default defineBackground(() => {
   // Add new function to reinitialize extension for a specific tab
   async function reinitializeForTab(tabId: number) {
     try {
-      // 防止并发初始化
+      // Prevent concurrent initialization
       if (isInitializing) {
         console.log(
           `Reinitialization for tab ${tabId} skipped - another initialization in progress`
@@ -1107,7 +1107,7 @@ export default defineBackground(() => {
         return;
       }
 
-      // 检查初始化间隔
+      // Check initialization interval
       const now = Date.now();
       if (now - lastInitTime < MIN_INIT_INTERVAL) {
         console.log(
@@ -1118,7 +1118,7 @@ export default defineBackground(() => {
         return;
       }
 
-      // 设置互斥锁和时间戳
+      // Set mutex lock and timestamp
       isInitializing = true;
       lastInitTime = now;
 
@@ -1174,7 +1174,7 @@ export default defineBackground(() => {
       // Still set initialization flag to true to prevent getting stuck
       extensionInitialized = true;
     } finally {
-      // 释放互斥锁
+      // Release mutex lock
       isInitializing = false;
     }
   }
