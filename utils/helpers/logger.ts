@@ -1,25 +1,79 @@
 // Enhanced logging with timestamp
 export function setupEnhancedLogging() {
-  // Add more detailed logging
-  console.log = (function (originalLog) {
-    return function (...args) {
+  // Store original console methods
+  const originalLog = console.log;
+  const originalError = console.error;
+  const originalWarn = console.warn;
+  const originalInfo = console.info;
+  const originalDebug = console.debug;
+
+  // Check if we're in development environment
+  // In Chrome extensions, this is a reasonable way to check development vs production
+  const isDevelopment = !chrome.runtime.getManifest().update_url;
+
+  if (isDevelopment) {
+    // Only override console methods in development environment
+    // Add more detailed logging with timestamp
+    console.log = function (...args) {
       const timestamp = new Date()
         .toISOString()
         .replace("T", " ")
         .substring(0, 19);
       originalLog.apply(console, [`[${timestamp}]`, ...args]);
     };
-  })(console.log);
 
-  console.error = (function (originalError) {
-    return function (...args) {
+    console.error = function (...args) {
       const timestamp = new Date()
         .toISOString()
         .replace("T", " ")
         .substring(0, 19);
       originalError.apply(console, [`[${timestamp}][ERROR]`, ...args]);
     };
-  })(console.error);
+
+    console.warn = function (...args) {
+      const timestamp = new Date()
+        .toISOString()
+        .replace("T", " ")
+        .substring(0, 19);
+      originalWarn.apply(console, [`[${timestamp}][WARN]`, ...args]);
+    };
+
+    console.info = function (...args) {
+      const timestamp = new Date()
+        .toISOString()
+        .replace("T", " ")
+        .substring(0, 19);
+      originalInfo.apply(console, [`[${timestamp}][INFO]`, ...args]);
+    };
+
+    console.debug = function (...args) {
+      const timestamp = new Date()
+        .toISOString()
+        .replace("T", " ")
+        .substring(0, 19);
+      originalDebug.apply(console, [`[${timestamp}][DEBUG]`, ...args]);
+    };
+  } else {
+    // In production, silence all logs except errors
+    console.log = function () {};
+    console.warn = function () {};
+    console.info = function () {};
+    console.debug = function () {};
+
+    // Keep error logging but make it minimal
+    console.error = function (...args) {
+      originalError.apply(console, args);
+    };
+  }
+}
+
+// Create utility functions to check environment
+export function isDevelopment(): boolean {
+  return !chrome.runtime.getManifest().update_url;
+}
+
+export function isProduction(): boolean {
+  return !!chrome.runtime.getManifest().update_url;
 }
 
 // Enhanced error handling system
@@ -50,7 +104,7 @@ export function handleError(
 
   // Log error with consistent format
   console.error(`[ERROR][${context}] ${errorMessage}`);
-  if (errorStack) {
+  if (errorStack && isDevelopment()) {
     console.error(`[ERROR][${context}][Stack] ${errorStack}`);
   }
 
@@ -60,11 +114,13 @@ export function handleError(
       options.retryContext;
 
     if (retryCount < maxRetries) {
-      console.log(
-        `[${context}] Retrying in ${retryInterval}ms (attempt ${
-          retryCount + 1
-        }/${maxRetries})...`
-      );
+      if (isDevelopment()) {
+        console.log(
+          `[${context}] Retrying in ${retryInterval}ms (attempt ${
+            retryCount + 1
+          }/${maxRetries})...`
+        );
+      }
       setTimeout(() => {
         retryCallback();
       }, retryInterval);

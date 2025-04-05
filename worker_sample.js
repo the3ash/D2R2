@@ -13,6 +13,17 @@ const ALLOWED_ORIGINS = [
   // Consider adding local test domains
 ];
 
+// Add Cloudflare ID validation function
+function isValidCloudflareId(id, allowedId) {
+  if (!id || typeof id !== "string") return false;
+
+  // Cloudflare Account ID format: 32 hexadecimal characters
+  const cloudflareIdRegex = /^[0-9a-f]{32}$/i;
+
+  // Both format AND match with allowed ID are required
+  return cloudflareIdRegex.test(id) && id === allowedId;
+}
+
 // Handle CORS preflight requests
 async function handleCorsRequest(request) {
   console.log("Processing CORS preflight request");
@@ -41,6 +52,27 @@ async function handleCorsRequest(request) {
 // Main request handling function
 export default {
   async fetch(request, env, ctx) {
+    // Check if ALLOWED_CLOUDFLARE_ID is configured
+    if (!env.ALLOWED_CLOUDFLARE_ID) {
+      console.error(
+        "ALLOWED_CLOUDFLARE_ID environment variable is not configured"
+      );
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error:
+            "Server configuration error: Missing required security configuration",
+        }),
+        {
+          status: 500,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+        }
+      );
+    }
+
     // Print request information
     try {
       console.log("Received request:", request.method, request.url);
@@ -92,6 +124,12 @@ async function handleTestConnectionRequest(request, env) {
     const origin = request.headers.get("Origin") || "*";
     const url = new URL(request.url);
 
+    // Get Cloudflare ID from query parameters and validate it
+    const cloudflareId = url.searchParams.get("cloudflareId");
+    const isValidId = cloudflareId
+      ? isValidCloudflareId(cloudflareId, env.ALLOWED_CLOUDFLARE_ID)
+      : false;
+
     // Check if R2 bucket is accessible
     let r2Status = "Unknown";
     try {
@@ -112,6 +150,10 @@ async function handleTestConnectionRequest(request, env) {
         r2Status: r2Status,
         region: request.cf ? request.cf.colo : "Unknown",
         clientIP: request.headers.get("CF-Connecting-IP") || "Unknown",
+        idValidation: {
+          provided: !!cloudflareId,
+          valid: isValidId,
+        },
       },
       requestPath: url.pathname,
       version: "1.0.0",
@@ -161,7 +203,7 @@ async function handleImageUrlRequest(request, env) {
 
     const { cloudflareId, folderName, imageUrl } = requestData;
 
-    // Validate parameters
+    // Validate parameters with enhanced Cloudflare ID validation
     if (!cloudflareId || !imageUrl) {
       console.error("Missing required parameters");
       return new Response(
@@ -171,6 +213,24 @@ async function handleImageUrlRequest(request, env) {
         }),
         {
           status: 400,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": origin,
+          },
+        }
+      );
+    }
+
+    // Validate Cloudflare ID format and authorization
+    if (!isValidCloudflareId(cloudflareId, env.ALLOWED_CLOUDFLARE_ID)) {
+      console.error("Invalid or unauthorized Cloudflare ID");
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Invalid or unauthorized Cloudflare ID",
+        }),
+        {
+          status: 403,
           headers: {
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": origin,
@@ -227,7 +287,7 @@ async function handleImageUrlRequest(request, env) {
               "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
             Accept:
               "image/webp,image/avif,image/png,image/svg+xml,image/*,*/*;q=0.8",
-            "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
             Referer: new URL(imageUrl).origin,
             "sec-ch-ua":
               '"Not A(Brand";v="99", "Google Chrome";v="121", "Chromium";v="121"',
@@ -426,73 +486,369 @@ async function handleImageUrlRequest(request, env) {
   }
 }
 
-// Handle form file upload requests
+// Handle file upload requests
 async function handleFileRequest(request, env) {
   try {
+    console.log("Processing file upload request...");
+    const origin = request.headers.get("Origin") || "*";
+
+    // Parse FormData from request
     const formData = await request.formData();
 
+    // Check for action field to determine upload type
+    const action = formData.get("action");
+
+    // Handle chunked upload actions
+    if (action === "upload_chunk") {
+      return handleChunkUpload(formData, env, origin);
+    } else if (action === "finalize_chunked_upload") {
+      return handleFinalizeChunkedUpload(formData, env, origin);
+    }
+
+    // Handle regular upload (legacy path)
     const file = formData.get("file");
     const cloudflareId = formData.get("cloudflareId");
-    const folderName = formData.get("folderName");
+    const folderName = formData.get("folderName") || null;
 
-    // Validate parameters
+    // Validate parameters with enhanced Cloudflare ID validation
     if (!file || !cloudflareId) {
+      console.error("Missing required parameters");
       return new Response(
         JSON.stringify({
           success: false,
-          error: "Missing required parameters",
+          error: "Missing required file or cloudflareId",
         }),
         {
           status: 400,
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": origin,
+          },
         }
       );
     }
 
-    // Build storage path (using folder path)
+    // Validate Cloudflare ID format and authorization
+    if (!isValidCloudflareId(cloudflareId, env.ALLOWED_CLOUDFLARE_ID)) {
+      console.error("Invalid or unauthorized Cloudflare ID");
+      return errorResponse(
+        "Invalid or unauthorized Cloudflare ID",
+        403,
+        origin
+      );
+    }
+
+    // Generate storage path (bucket name is constant)
     const fileName = file.name;
-    const objectKey = folderName ? `${folderName}/${fileName}` : fileName;
+    const storagePath = folderName ? `${folderName}/${fileName}` : fileName;
 
-    // Upload to R2 (using bound single bucket)
-    await env.BUCKET_NAME.put(objectKey, file, {
-      httpMetadata: {
-        contentType: file.type,
-      },
-    });
+    console.log(`Processing file upload: ${storagePath}`);
+    console.log(`File metadata: type=${file.type}, size=${file.size} bytes`);
 
-    // Get actual bound bucket name
-    const actualBucketName = env.BUCKET_NAME_META?.name || "your-bucket";
-
-    // Build access URL - use actual bucket name
-    const publicUrl = `https://${actualBucketName}.${cloudflareId}.r2.cloudflarestorage.com/${objectKey}`;
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        url: publicUrl,
-      }),
-      {
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": request.headers.get("Origin"),
+    // Upload to R2
+    try {
+      const r2Object = await env.BUCKET_NAME.put(storagePath, file, {
+        httpMetadata: {
+          contentType: file.type,
         },
-      }
-    );
+      });
+
+      // Generate public URL
+      const publicUrl = `https://${env.R2_PUBLIC_DOMAIN}/${storagePath}`;
+
+      console.log(`Upload successful: ${publicUrl}`);
+
+      // Return success response
+      return new Response(
+        JSON.stringify({
+          success: true,
+          url: publicUrl,
+          path: storagePath,
+          size: file.size,
+          type: file.type,
+        }),
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": origin,
+          },
+        }
+      );
+    } catch (r2Error) {
+      console.error("R2 upload error:", r2Error);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `R2 error: ${r2Error.message || "Unknown error"}`,
+        }),
+        {
+          status: 500,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": origin,
+          },
+        }
+      );
+    }
   } catch (error) {
     console.error("Error processing file upload:", error);
-
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message,
+        error: `Upload error: ${error.message || "Unknown error"}`,
       }),
       {
         status: 500,
         headers: {
           "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": request.headers.get("Origin"),
+          "Access-Control-Allow-Origin": request.headers.get("Origin") || "*",
         },
       }
     );
   }
+}
+
+// Handle single chunk upload
+async function handleChunkUpload(formData, env, origin) {
+  try {
+    const sessionId = formData.get("sessionId");
+    const chunkIndex = parseInt(formData.get("chunkIndex"));
+    const totalChunks = parseInt(formData.get("totalChunks"));
+    const cloudflareId = formData.get("cloudflareId");
+    const file = formData.get("file");
+    const folderName = formData.get("folderName") || null;
+
+    // Validate required parameters
+    if (
+      !sessionId ||
+      isNaN(chunkIndex) ||
+      isNaN(totalChunks) ||
+      !file ||
+      !cloudflareId ||
+      chunkIndex < 0 ||
+      totalChunks <= 0
+    ) {
+      return errorResponse(
+        "Missing or invalid chunked upload parameters",
+        400,
+        origin
+      );
+    }
+
+    // Validate Cloudflare ID format
+    if (!isValidCloudflareId(cloudflareId, env.ALLOWED_CLOUDFLARE_ID)) {
+      console.error("Invalid Cloudflare ID format");
+      return errorResponse(
+        "Invalid Cloudflare ID format. ID should be a 32-character hexadecimal string.",
+        400,
+        origin
+      );
+    }
+
+    // Create a temporary chunk path in R2
+    const chunkPath = `temp/${sessionId}/${chunkIndex}`;
+
+    // Upload chunk to R2
+    await env.BUCKET_NAME.put(chunkPath, file, {
+      customMetadata: {
+        sessionId,
+        chunkIndex: chunkIndex.toString(),
+        totalChunks: totalChunks.toString(),
+        cloudflareId,
+        folderName: folderName || "",
+      },
+    });
+
+    console.log(`Chunk ${chunkIndex + 1}/${totalChunks} uploaded successfully`);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        chunkIndex,
+        totalChunks,
+        sessionId,
+        message: `Chunk ${chunkIndex + 1}/${totalChunks} uploaded successfully`,
+      }),
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": origin,
+        },
+      }
+    );
+  } catch (error) {
+    console.error("Error processing chunk upload:", error);
+    return errorResponse(
+      `Chunk upload error: ${error.message || "Unknown error"}`,
+      500,
+      origin
+    );
+  }
+}
+
+// Finalize chunked upload - combines all chunks into final file
+async function handleFinalizeChunkedUpload(formData, env, origin) {
+  try {
+    const sessionId = formData.get("sessionId");
+    const totalChunks = parseInt(formData.get("totalChunks"));
+    const filename = formData.get("filename");
+    const cloudflareId = formData.get("cloudflareId");
+    const folderName = formData.get("folderName") || null;
+
+    // Validate parameters
+    if (!sessionId || isNaN(totalChunks) || !filename || !cloudflareId) {
+      return errorResponse(
+        "Missing required parameters for finalizing upload",
+        400,
+        origin
+      );
+    }
+
+    // Validate Cloudflare ID format
+    if (!isValidCloudflareId(cloudflareId, env.ALLOWED_CLOUDFLARE_ID)) {
+      console.error("Invalid or unauthorized Cloudflare ID");
+      return errorResponse(
+        "Invalid or unauthorized Cloudflare ID",
+        403,
+        origin
+      );
+    }
+
+    const prefix = `temp/${sessionId}/`;
+
+    const listed = await env.BUCKET_NAME.list({ prefix });
+    for (const object of listed.objects) {
+      chunksList.push(object);
+    }
+
+    // Validate that we have all chunks
+    if (chunksList.length !== totalChunks) {
+      return errorResponse(
+        `Missing chunks: expected ${totalChunks}, found ${chunksList.length}`,
+        400,
+        origin
+      );
+    }
+
+    // Sort chunks by index
+    chunksList.sort((a, b) => {
+      const indexA = parseInt(a.key.split("/").pop());
+      const indexB = parseInt(b.key.split("/").pop());
+      return indexA - indexB;
+    });
+
+    // Create array for chunk data
+    const chunksData = [];
+
+    // Fetch all chunks
+    for (const chunk of chunksList) {
+      const chunkObj = await env.BUCKET_NAME.get(chunk.key);
+      if (chunkObj === null) {
+        return errorResponse(`Chunk not found: ${chunk.key}`, 404, origin);
+      }
+
+      const chunkData = await chunkObj.arrayBuffer();
+      chunksData.push(new Uint8Array(chunkData));
+    }
+
+    // Combine chunks
+    const totalSize = chunksData.reduce(
+      (total, chunk) => total + chunk.length,
+      0
+    );
+    const combinedArray = new Uint8Array(totalSize);
+
+    let offset = 0;
+    for (const chunk of chunksData) {
+      combinedArray.set(chunk, offset);
+      offset += chunk.length;
+    }
+
+    // Determine content type
+    let contentType = "application/octet-stream";
+    if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) {
+      contentType = "image/jpeg";
+    } else if (filename.endsWith(".png")) {
+      contentType = "image/png";
+    } else if (filename.endsWith(".gif")) {
+      contentType = "image/gif";
+    } else if (filename.endsWith(".webp")) {
+      contentType = "image/webp";
+    }
+
+    // Generate final storage path
+    const storagePath = folderName ? `${folderName}/${filename}` : filename;
+
+    // Upload combined file to final location
+    await env.BUCKET_NAME.put(storagePath, combinedArray, {
+      httpMetadata: {
+        contentType: contentType,
+      },
+    });
+
+    // Generate public URL
+    const publicUrl = `https://${env.R2_PUBLIC_DOMAIN}/${storagePath}`;
+
+    console.log(`Chunked upload finalized successfully: ${publicUrl}`);
+
+    // Clean up temporary chunks (async)
+    env.BUCKET_NAME.list({ prefix })
+      .then((result) => {
+        for (const object of result.objects) {
+          env.BUCKET_NAME.delete(object.key).catch((error) => {
+            console.error(
+              `Error deleting temporary chunk ${object.key}:`,
+              error
+            );
+          });
+        }
+        console.log(
+          `Cleanup of ${result.objects.length} temporary chunks initiated`
+        );
+      })
+      .catch((error) => {
+        console.error("Error during cleanup:", error);
+      });
+
+    // Return success response
+    return new Response(
+      JSON.stringify({
+        success: true,
+        url: publicUrl,
+        path: storagePath,
+        size: totalSize,
+        type: contentType,
+      }),
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": origin,
+        },
+      }
+    );
+  } catch (error) {
+    console.error("Error finalizing chunked upload:", error);
+    return errorResponse(
+      `Finalization error: ${error.message || "Unknown error"}`,
+      500,
+      origin
+    );
+  }
+}
+
+// Helper for error responses
+function errorResponse(message, status = 400, origin = "*") {
+  return new Response(
+    JSON.stringify({
+      success: false,
+      error: message,
+    }),
+    {
+      status: status,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": origin,
+      },
+    }
+  );
 }

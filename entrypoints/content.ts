@@ -132,7 +132,7 @@ export default defineContentScript({
     // Helper function to remove toast
     const removeToast = (toast: HTMLElement) => {
       // First move up and fade out
-      toast.style.transition = "opacity 0.2s ease-in, transform 0.2s ease-in";
+      toast.style.transition = "opacity 0.2s ease-out, transform 0.2s ease-out";
       toast.style.opacity = "0";
       toast.style.transform = "translateY(-20px)";
 

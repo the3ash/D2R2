@@ -90,11 +90,11 @@ export class UploadTaskManager {
     }
   > = new Map();
 
+  private lastMenuClickTime: number = 0;
+
   readonly MAX_RETRY_COUNT: number = 3;
   readonly RETRY_INTERVAL: number = 500; // ms
   readonly MENU_CLICK_COOLDOWN: number = 300; // ms
-
-  private lastMenuClickTime: number = 0;
 
   constructor() {}
 

@@ -42,17 +42,22 @@ export default function App() {
 
   // Validate form fields
   const validateForm = (): ValidationErrors => {
-    const errors: ValidationErrors = {};
+    return {};
+  };
 
-    if (!config?.workerUrl?.trim()) {
-      errors.workerUrl = "Worker URL is required";
-    }
+  // Check if URL is valid
+  const isValidUrl = (url: string): boolean => {
+    return !!url;
+  };
 
-    if (!config?.cloudflareId?.trim()) {
-      errors.cloudflareId = "Cloudflare ID is required";
-    }
+  // Check if Cloudflare ID is valid
+  const isValidCloudflareId = (id: string): boolean => {
+    return !!id;
+  };
 
-    return errors;
+  // Check if form can be submitted
+  const isFormSubmittable = (): boolean => {
+    return !!(config?.workerUrl?.trim() && config?.cloudflareId?.trim());
   };
 
   // Save configuration and test connection
@@ -61,10 +66,7 @@ export default function App() {
 
     if (!config) return;
 
-    // Validate form
-    const errors = validateForm();
-    if (Object.keys(errors).length > 0) {
-      setValidationErrors(errors);
+    if (!config.workerUrl?.trim() || !config.cloudflareId?.trim()) {
       return;
     }
 
@@ -82,12 +84,17 @@ export default function App() {
         setConfig((prev) => (prev ? { ...prev, workerUrl } : null));
       }
 
+      // Add Cloudflare ID as query parameter
+      const urlObj = new URL(workerUrl);
+      urlObj.searchParams.append("cloudflareId", config.cloudflareId.trim());
+      const testUrl = urlObj.toString();
+
       // Test GET request with longer timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
       try {
-        const testResponse = await fetch(workerUrl, {
+        const testResponse = await fetch(testUrl, {
           method: "GET",
           headers: {
             Origin: location.origin,
@@ -117,13 +124,28 @@ export default function App() {
         try {
           const responseJson = JSON.parse(responseText);
           console.log("Test successful, response:", responseJson);
+
+          // Check ID validation result, but use generic error message
+          if (responseJson.workerInfo?.idValidation) {
+            const idValidation = responseJson.workerInfo.idValidation;
+            if (!idValidation.valid) {
+              throw new Error(
+                "Connection failed, try again or change settings"
+              );
+            }
+          }
         } catch (e) {
-          console.log("Test successful, but response is not JSON format");
+          console.log("Test response processing error:", e);
+          if (e instanceof Error) {
+            throw e;
+          } else {
+            console.log("Test successful, but response is not JSON format");
+          }
         }
       } catch (err) {
         clearTimeout(timeoutId);
         if (err instanceof Error && err.name === "AbortError") {
-          throw new Error("Connection timeout");
+          throw new Error("Connection timeout, try again");
         }
         throw err;
       }
@@ -131,9 +153,13 @@ export default function App() {
       await saveConfig(config);
       setIsViewMode(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Connection failed");
+      setError(
+        err instanceof Error && err.name === "AbortError"
+          ? "Connection timeout, try again"
+          : "Connection failed, try again or change settings"
+      );
       console.error(err);
-      setTimeout(() => setError(null), 2000);
+      setTimeout(() => setError(null), 3000);
     } finally {
       setIsSaving(false);
     }
@@ -213,14 +239,12 @@ export default function App() {
         <form onSubmit={saveAndTestConnection} autoComplete="off">
           <div className="form-group">
             <label className="font-caption" htmlFor="cloudflare-id">
-              Cloudflare ID:
+              Cloudflare ID
             </label>
             <input
               id="cloudflare-id"
               type="text"
-              className={`font-body ${
-                validationErrors.cloudflareId ? "error" : ""
-              }`}
+              className="font-body"
               value={config?.cloudflareId || ""}
               onChange={(e) =>
                 setConfig((prev) =>
@@ -232,23 +256,16 @@ export default function App() {
               autoComplete="off"
               spellCheck={false}
             />
-            {validationErrors.cloudflareId && (
-              <div className="error-message">
-                {validationErrors.cloudflareId}
-              </div>
-            )}
           </div>
 
           <div className="form-group">
             <label className="font-caption" htmlFor="worker-url">
-              Worker URL:
+              Worker URL
             </label>
             <input
               id="worker-url"
               type="text"
-              className={`font-body ${
-                validationErrors.workerUrl ? "error" : ""
-              }`}
+              className="font-body"
               value={config?.workerUrl || ""}
               onChange={(e) =>
                 setConfig((prev) =>
@@ -260,14 +277,11 @@ export default function App() {
               autoComplete="off"
               spellCheck={false}
             />
-            {validationErrors.workerUrl && (
-              <div className="error-message">{validationErrors.workerUrl}</div>
-            )}
           </div>
 
           <div>
             <label className="font-caption" htmlFor="folder-path">
-              Storage Path (Optional):
+              Storage Path (Optional)
             </label>
             <div className="storage-path-container">
               <input
@@ -308,37 +322,42 @@ export default function App() {
             </div>
           </div>
 
-          {error && <div className="error-message">{error}</div>}
-
-          <button
-            type="submit"
-            className="save-btn font-body-m"
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <svg
-                className="loading-icon"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <circle
-                  className="spinner"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  fill="none"
-                  strokeWidth="1.35"
-                  stroke="currentColor"
-                  strokeDasharray="32"
-                  strokeLinecap="round"
-                />
-              </svg>
-            ) : (
-              "Save"
-            )}
-          </button>
+          <div className="save-btn-container">
+            {error && <div className="error-message-text">{error}</div>}
+            <button
+              type="submit"
+              className="save-btn font-body-m"
+              disabled={isSaving || !isFormSubmittable()}
+              style={{
+                opacity: isFormSubmittable() ? 1 : 0.24,
+                cursor: isFormSubmittable() ? "pointer" : "not-allowed",
+              }}
+            >
+              {isSaving ? (
+                <svg
+                  className="loading-icon"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <circle
+                    className="spinner"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    fill="none"
+                    strokeWidth="1.35"
+                    stroke="currentColor"
+                    strokeDasharray="32"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              ) : (
+                "Save"
+              )}
+            </button>
+          </div>
         </form>
       )}
     </div>

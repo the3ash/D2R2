@@ -71,9 +71,12 @@ This extension uses the **Worker-bound R2 bucket** pattern:
    b. **Configure Environment Variables**:
 
    - In the "Variables" section, click "Environment Variables"
-   - Add two environment variables:
+   - Add the following environment variables:
      - `R2_ACCESS_KEY_ID`: Enter the previously saved Access Key ID
      - `R2_SECRET_ACCESS_KEY`: Enter the previously saved Secret Access Key
+     - `ALLOWED_CLOUDFLARE_ID`: Enter your Cloudflare Account ID (32-character hex string)
+       - This is a critical security measure that ensures only your account ID is authorized
+       - You can find your Account ID in the Cloudflare Dashboard URL or in the right sidebar
    - Click "Save"
 
 6. Click "Quick edit" button and paste the Worker code provided in this project
@@ -118,6 +121,10 @@ This extension uses the **Worker-bound R2 bucket** pattern:
 
    wrangler secret put R2_SECRET_ACCESS_KEY
    # Enter your Secret Access Key when prompted
+
+   wrangler secret put ALLOWED_CLOUDFLARE_ID
+   # Enter your Cloudflare Account ID (32-character hex string) when prompted
+   # This is a critical security measure to prevent unauthorized usage
    ```
 
 8. Publish Worker:
@@ -132,16 +139,17 @@ This extension uses the **Worker-bound R2 bucket** pattern:
 
 1. **Never** store R2 access keys in frontend code
 2. Ensure `ALLOWED_ORIGINS` restricts access to only your extension
-3. Consider adding additional authentication mechanisms, such as custom tokens
-4. Regularly rotate R2 access keys
+3. **Always** configure the `ALLOWED_CLOUDFLARE_ID` environment variable as an authorization requirement
+   - This ensures only requests with your specific Cloudflare Account ID are processed
+   - Prevents unauthorized use even if someone discovers your Worker URL
+4. Consider adding additional authentication mechanisms, such as custom tokens
+5. Regularly rotate R2 access keys
 
 ### 5. Worker Configuration in Extension
 
 1. Install and open the extension
 2. In the popup configuration page:
    - Enter your Cloudflare Account ID
-     - Log in to Cloudflare Dashboard
-     - Your account ID can be found in the bottom right corner on the Overview page
    - Enter Worker URL, format: `https://your-worker-name.your-username.workers.dev`
    - Storage Path Configuration:
      - If left empty: Images will be uploaded to the root directory of your R2 bucket
@@ -154,6 +162,8 @@ This extension uses the **Worker-bound R2 bucket** pattern:
 
 - **Invalid or unexpected token**: Check if environment variables are correctly configured, ensure using `env.variable_name` format
 - **Unauthorized (403)**: Confirm extension ID is correctly added to `ALLOWED_ORIGINS` array
+- **Server configuration error (500)**: Check if `ALLOWED_CLOUDFLARE_ID` environment variable is properly set
+- **Invalid or unauthorized Cloudflare ID**: Ensure the Cloudflare ID in your extension matches the one set in `ALLOWED_CLOUDFLARE_ID`
 - **Failed to fetch image**: Check if image URL is accessible, some websites may restrict cross-origin requests
 - **Service bind failed**: Ensure R2 bucket binding name is `BUCKET_NAME`, must match Worker code
 - **URL build error**: Need to correctly configure `BUCKET_NAME_META` environment variable or access actual bucket name

@@ -32,7 +32,7 @@ export async function handleMenuClick(
     const uploadId = uploadTaskManager.createTask(info, tab);
     console.log(`Created task ID: ${uploadId}`);
 
-    // Check configuration first before showing any processing toast
+    // Check configuration first
     const config = await getConfig();
     if (!config.cloudflareId || !config.workerUrl) {
       console.error(
@@ -57,10 +57,10 @@ export async function handleMenuClick(
       return;
     }
 
-    // Only show processing notification if config is valid
+    // Only show loading toast if config is complete
     await showPageToast(
       TOAST_STATUS.DROPPING,
-      "Processing image upload...",
+      "Dropping",
       "loading",
       undefined,
       uploadId

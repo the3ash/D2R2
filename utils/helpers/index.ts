@@ -1,3 +1,4 @@
+import { setupEnhancedLogging as setupLogging, isDevelopment } from "./logger";
 export * from "./logger";
 export * from "./url";
 export * from "./debounce";
@@ -31,31 +32,17 @@ export function formatWorkerUrl(url: string): string {
 
 /**
  * Set up enhanced logging functionality
+ * This is a legacy function that now delegates to the newer implementation
+ * Kept for backward compatibility
  */
 export function setupEnhancedLogging() {
-  const originalConsoleLog = console.log;
-  const originalConsoleWarn = console.warn;
-  const originalConsoleError = console.error;
-
-  // Add timestamps to log messages
-  console.log = function (...args) {
-    const timestamp = new Date().toISOString();
-    originalConsoleLog.apply(console, [`[${timestamp}] [LOG]`, ...args]);
-  };
-
-  console.warn = function (...args) {
-    const timestamp = new Date().toISOString();
-    originalConsoleWarn.apply(console, [`[${timestamp}] [WARN]`, ...args]);
-  };
-
-  console.error = function (...args) {
-    const timestamp = new Date().toISOString();
-    originalConsoleError.apply(console, [`[${timestamp}] [ERROR]`, ...args]);
-  };
+  // 直接调用从 logger.ts 导入的函数（使用重命名避免冲突）
+  setupLogging();
 }
 
 /**
  * Unified error handler with consistent formatting and behavior
+ * @deprecated Use the handleError from logger.ts instead
  */
 export function handleError(
   error: unknown,
@@ -68,7 +55,7 @@ export function handleError(
 
   // Log error with consistent format
   console.error(`[ERROR][${context}] ${errorMessage}`);
-  if (errorStack) {
+  if (errorStack && isDevelopment()) {
     console.error(`[ERROR][${context}][Stack] ${errorStack}`);
   }
 
@@ -78,11 +65,13 @@ export function handleError(
       options.retryContext;
 
     if (retryCount < maxRetries) {
-      console.log(
-        `[${context}] Retrying in ${retryInterval}ms (attempt ${
-          retryCount + 1
-        }/${maxRetries})...`
-      );
+      if (isDevelopment()) {
+        console.log(
+          `[${context}] Retrying in ${retryInterval}ms (attempt ${
+            retryCount + 1
+          }/${maxRetries})...`
+        );
+      }
       setTimeout(() => {
         retryCallback();
       }, retryInterval);
