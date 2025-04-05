@@ -1,0 +1,95 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules
+dist
+dist-ssr
+*.local
+
+# Build outputs
+.output
+output
+dist
+build
+.build
+
+# Test coverage reports
+coverage
+.nyc_output
+
+# Cache
+.cache
+.temp
+.tmp
+.eslintcache
+.stylelintcache
+.parcel-cache
+
+# WXT related
+.wxt
+stats.html
+stats-*.json
+web-ext.config.ts
+
+# Local environment configuration
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Editors and IDEs
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.default
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+.history
+
+# System files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.directory
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*~.nib
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+
+# Browser extension packages
+*.crx
+*.xpi
+*.zip
+
+# Lock files (depending on project requirements, may need to keep)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
