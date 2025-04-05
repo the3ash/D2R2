@@ -210,6 +210,25 @@ export class UploadTaskManager {
   public cleanupTask(taskId: string) {
     this.tasks.delete(taskId);
   }
+
+  public cleanupOldTasks(maxAgeInMs: number = 3600000): void {
+    const now = Date.now();
+    const tasksToRemove: string[] = [];
+
+    this.tasks.forEach((task, taskId) => {
+      if (now - task.startTime > maxAgeInMs) {
+        tasksToRemove.push(taskId);
+      }
+    });
+
+    tasksToRemove.forEach((taskId) => {
+      this.tasks.delete(taskId);
+    });
+
+    if (tasksToRemove.length > 0) {
+      console.log(`Cleaned up ${tasksToRemove.length} old upload tasks`);
+    }
+  }
 }
 
 // PageStateManager for tracking page/tab state

@@ -31,7 +31,7 @@ export async function handleMenuClick(
     const uploadId = uploadTaskManager.createTask(info, tab);
     console.log(`Created task ID: ${uploadId}`);
 
-    // 显示开始处理的通知
+    // Show processing notification
     await showPageToast(
       TOAST_STATUS.DROPPING,
       "Processing image upload...",
@@ -40,7 +40,7 @@ export async function handleMenuClick(
       uploadId
     );
 
-    // 更新活动标签页信息
+    // Update active tab information
     if (tab?.id) {
       pageStateManager.setActiveTab(tab.id, tab.url);
     }
@@ -58,15 +58,13 @@ export async function handleMenuClick(
       console.log("Menu click processing completed for task:", uploadId);
     } catch (processingError) {
       console.error("Error processing menu click:", processingError);
-      throw processingError; // 重新抛出异常，以便外层catch块处理
+      throw processingError; // Re-throw the exception for outer catch block to handle
     }
-
-    console.log("======= MENU CLICK COMPLETED =======");
   } catch (error) {
     console.error("======= MENU CLICK ERROR =======", error);
     const errorMessage = handleError(error, "handleMenuClick");
 
-    // 确保错误状态正确显示
+    // Ensure error status is displayed correctly
     try {
       showNotification(TOAST_STATUS.FAILED, errorMessage, "error");
       await showPageToast(
@@ -80,7 +78,7 @@ export async function handleMenuClick(
       console.error("Failed to show error notification:", notificationError);
     }
 
-    // 添加到等待队列中
+    // Add to pending queue
     pageStateManager.addPendingMenuClick(info, tab);
     console.log("Added to pending queue due to error");
   }

@@ -211,7 +211,7 @@ async function handleSuccessfulUpload(
     uploadTaskManager.updateTaskState(
       uploadId,
       UploadState.SUCCESS,
-      "" // 第三个参数必需的，传入空字符串
+      "" // Third parameter is required, passing empty string
     );
 
     // Show success notification
@@ -261,7 +261,7 @@ async function handleFailedUpload(
     uploadTaskManager.updateTaskState(
       uploadId,
       UploadState.ERROR,
-      displayMessage // 第三个参数必需的
+      displayMessage // Third parameter is required
     );
 
     // Show failure notification
@@ -508,12 +508,12 @@ export async function handleImageUpload(
     // Update notification
     showProcessingNotification(info, "Fetching image data...");
 
-    // 直接处理图片上传，不使用handleImageClick函数
+    // Directly process image upload, not using handleImageClick function
     try {
-      // 获取图片数据
+      // Get image data
       const imageDataResult = await fetchImageData(info.srcUrl || "", uploadId);
       if (!imageDataResult.success) {
-        // 显示错误信息
+        // Display error message
         await showPageToast(
           TOAST_STATUS.FAILED,
           `Failed to get image: ${imageDataResult.error}`,
@@ -524,11 +524,11 @@ export async function handleImageUpload(
         return false;
       }
 
-      // 更新状态
+      // Update status
       uploadTaskManager.updateTaskState(uploadId, UploadState.PROCESSING, "");
       showProcessingNotification(info, "Preparing upload...");
 
-      // 创建表单数据
+      // Create form data
       const { formData, filename } = createUploadFormData(
         imageDataResult.imageBlob!,
         info.srcUrl || "",
@@ -536,19 +536,19 @@ export async function handleImageUpload(
         targetFolder || null
       );
 
-      // 更新状态为上传中
+      // Update status to uploading
       showProcessingNotification(info, "Uploading image...");
 
-      // 上传图片
+      // Upload image
       const uploadResult = await uploadImageToServer(
         formData,
         formattedWorkerUrl,
         uploadId
       );
 
-      // 处理上传结果
+      // Process upload result
       if (uploadResult.success && uploadResult.result.success) {
-        // 处理成功
+        // Handle success
         await handleSuccessfulUpload(
           uploadResult.result,
           uploadId,
@@ -556,7 +556,7 @@ export async function handleImageUpload(
         );
         return true;
       } else {
-        // 处理失败
+        // Handle failure
         await handleFailedUpload(
           uploadResult.error || uploadResult.result?.error,
           uploadId,
@@ -565,30 +565,12 @@ export async function handleImageUpload(
         return false;
       }
     } catch (uploadError) {
-      console.error(
-        `Error in direct upload for task ${uploadId}:`,
-        uploadError
+      console.error(`Upload failed for task ${uploadId}:`, uploadError);
+      // Error already handled in handleImageUpload, only log here without showing duplicate notification
+      console.log(
+        "Error already handled in handleImageUpload, not showing duplicate notification"
       );
-      const errorMessage =
-        uploadError instanceof Error
-          ? uploadError.message
-          : String(uploadError);
-
-      uploadTaskManager.updateTaskState(
-        uploadId,
-        UploadState.ERROR,
-        errorMessage
-      );
-
-      await showPageToast(
-        TOAST_STATUS.FAILED,
-        `Error occurred during upload: ${errorMessage}`,
-        "error",
-        undefined,
-        notificationId // Replace the existing notification
-      );
-
-      return false;
+      throw uploadError;
     }
   } catch (error) {
     console.error(`Error in handleImageUpload for task ${uploadId}:`, error);
@@ -728,7 +710,7 @@ function handleMenuClickError(
   // Show notifications if we've reached max retries or on the first attempt
   if (retryCount === 0 || retryCount >= uploadTaskManager.MAX_RETRY_COUNT) {
     showNotification(TOAST_STATUS.FAILED, errorMessage, "error");
-    // 确保await，以免状态丢失
+    // Ensure await to prevent state loss
     setTimeout(async () => {
       try {
         await showPageToast(
@@ -761,7 +743,7 @@ export async function processMenuClick(
   const taskId = uploadTaskManager.createTask(info, tab);
   console.log(`Created task ${taskId} for menu click processing`);
 
-  // 立即显示处理中状态
+  // Immediately show processing status
   try {
     await showPageToast(
       TOAST_STATUS.DROPPING,
@@ -786,7 +768,7 @@ export async function processMenuClick(
     if (!validateSourceUrl(info, taskId)) {
       console.log(`Source URL validation failed for task ${taskId}`);
 
-      // 确保更新失败状态
+      // Ensure update failure status
       await showPageToast(
         TOAST_STATUS.FAILED,
         "Invalid image URL",
@@ -803,7 +785,7 @@ export async function processMenuClick(
     if (!folderResult.isValid) {
       console.log(`Target folder determination failed for task ${taskId}`);
 
-      // 确保更新失败状态
+      // Ensure update failure status
       await showPageToast(
         TOAST_STATUS.FAILED,
         "Invalid target folder",
@@ -814,7 +796,7 @@ export async function processMenuClick(
       return;
     }
 
-    // 更新状态提示处理中
+    // Update status prompt processing
     await showPageToast(
       TOAST_STATUS.DROPPING,
       `Uploading to ${folderResult.targetFolder || "root"}...`,
@@ -837,8 +819,8 @@ export async function processMenuClick(
       );
       console.log(`Image upload handling completed for task ${taskId}`);
 
-      // handleImageUpload已经更新了状态并显示了通知，不需要再次显示
-      // 仅记录状态，不显示通知
+      // handleImageUpload has already updated the status and displayed notifications, no need to display again
+      // Only record status, do not display notification
       if (!uploadResult) {
         console.log(
           `Upload failed for task ${taskId} (no success notification needed)`
@@ -850,7 +832,7 @@ export async function processMenuClick(
       }
     } catch (uploadError) {
       console.error(`Upload failed for task ${taskId}:`, uploadError);
-      // 错误已在handleImageUpload中处理，这里只记录不重复显示
+      // Error already handled in handleImageUpload, only log here without showing duplicate notification
       console.log(
         "Error already handled in handleImageUpload, not showing duplicate notification"
       );
@@ -865,7 +847,7 @@ export async function processMenuClick(
 }
 
 /**
- * 生成唯一ID
+ * Generate unique ID
  */
 function generateUniqueId(): string {
   return `upload_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
