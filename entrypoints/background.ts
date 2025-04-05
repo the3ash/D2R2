@@ -13,60 +13,24 @@ let extensionInitialized = false;
 // Helper function: Ensure Worker URL is properly formatted
 function formatWorkerUrl(url: string): string {
   if (!url) return url;
-
   const trimmedUrl = url.trim();
-  if (!trimmedUrl.startsWith("http://") && !trimmedUrl.startsWith("https://")) {
-    return `https://${trimmedUrl}`;
-  }
-  return trimmedUrl;
+  return !trimmedUrl.startsWith("http://") && !trimmedUrl.startsWith("https://")
+    ? `https://${trimmedUrl}`
+    : trimmedUrl;
+}
+
+// Helper function: Handle errors consistently
+function handleError(error: unknown, context: string): string {
+  console.error(`Error in ${context}:`, error);
+  return error instanceof Error ? error.message : String(error);
 }
 
 export default defineBackground(() => {
   console.log("D2R2 extension initializing...");
 
-  // Test function, call when appropriate
-  function testExtension() {
-    console.log("--------------------------------------------");
-    console.log("Starting D2R2 extension test");
-    console.log("Browser type:", navigator.userAgent);
-    console.log("Extension ID:", chrome.runtime.id);
-
-    console.log("Testing permissions:");
-    chrome.permissions.contains(
-      { permissions: ["notifications"] },
-      (hasPermission) => {
-        console.log(
-          " - Notification permission:",
-          hasPermission ? "Granted" : "Not granted"
-        );
-      }
-    );
-    chrome.permissions.contains(
-      { permissions: ["contextMenus"] },
-      (hasPermission) => {
-        console.log(
-          " - Context menu permission:",
-          hasPermission ? "Granted" : "Not granted"
-        );
-      }
-    );
-
-    console.log("Test completed");
-    console.log("--------------------------------------------");
-  }
-
   // Create test message listener
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log("Received message:", message);
-
-    if (message.action === "test") {
-      testExtension();
-      sendResponse({
-        success: true,
-        message: "Test executed, please check console logs",
-      });
-      return true;
-    }
 
     if (message.action === "testUpload") {
       const { workerUrl } = message.data || {};
@@ -103,8 +67,6 @@ export default defineBackground(() => {
           return response.text();
         })
         .then((text) => {
-          console.log("Response content:", text);
-
           if (!text || text.trim() === "") {
             showNotification(
               "Connection Test",
@@ -118,9 +80,7 @@ export default defineBackground(() => {
           }
 
           try {
-            // Try parsing JSON
             const data = JSON.parse(text);
-
             if (data && data.success) {
               showNotification(
                 "Connection Successful",
@@ -136,7 +96,6 @@ export default defineBackground(() => {
               sendResponse({ success: false, error: errorMsg });
             }
           } catch (e) {
-            // Response is not JSON format
             showNotification(
               "Connection Test",
               "Worker response is not JSON format, but connection succeeded"
@@ -152,12 +111,12 @@ export default defineBackground(() => {
           }
         })
         .catch((error) => {
-          console.error("Connection test error:", error);
-          showNotification("Connection Failed", error.message);
-          sendResponse({ success: false, error: error.message });
+          const errorMessage = handleError(error, "Connection test");
+          showNotification("Connection Failed", errorMessage);
+          sendResponse({ success: false, error: errorMessage });
         });
 
-      return true; // Keep message channel open for async response
+      return true;
     }
   });
 
@@ -268,9 +227,6 @@ export default defineBackground(() => {
 
       // Set initialization completed flag
       extensionInitialized = true;
-
-      // Run test after 3 seconds to ensure all functionality is working
-      setTimeout(testExtension, 3000);
     } catch (error) {
       console.error("Extension initialization failed:", error);
     }
@@ -742,12 +698,12 @@ export default defineBackground(() => {
         chrome.contextMenus.create(
           {
             id: `${FOLDER_PREFIX}0`,
-            title: `Drop to R2 / ${folderName}`,
+            title: `Drop to R2 / ${folderName}`.replace(/\s*\/\s*/g, " / "),
             contexts: ["image"],
           },
           checkMenuCreation
         );
-        console.log(`Single menu item created: Drop to R2/${folderName}`);
+        console.log(`Single menu item created: Drop to R2 / ${folderName}`);
       } else {
         // Case 3: Multiple folder paths or hideRoot disabled, create parent menu and submenus
         // Create parent menu
@@ -779,7 +735,7 @@ export default defineBackground(() => {
             {
               id: `${FOLDER_PREFIX}${index}`,
               parentId: PARENT_MENU_ID,
-              title: ` / ${folder}`,
+              title: ` / ${folder}`.replace(/\s*\/\s*/g, " / "),
               contexts: ["image"],
             },
             checkMenuCreation
@@ -825,7 +781,7 @@ export default defineBackground(() => {
   }
 
   // Handle menu click event
-  function handleMenuClick(
+  async function handleMenuClick(
     info: chrome.contextMenus.OnClickData,
     tab?: chrome.tabs.Tab
   ) {
@@ -848,19 +804,18 @@ export default defineBackground(() => {
       const folderIndex = parseInt(
         info.menuItemId.substring(FOLDER_PREFIX.length)
       );
-      getConfig().then((config) => {
-        const folders = parseFolderPath(config.folderPath);
-        if (folders && folderIndex < folders.length) {
-          targetFolder = folders[folderIndex];
-          handleImageUpload(info, targetFolder);
-        } else {
-          console.error("Invalid folder index");
-          showNotification("Upload Failed", "Invalid target folder");
-        }
-      });
+      const config = await getConfig();
+      const folders = parseFolderPath(config.folderPath);
+      if (folders && folderIndex < folders.length) {
+        targetFolder = folders[folderIndex];
+        await handleImageUpload(info, targetFolder);
+      } else {
+        console.error("Invalid folder index");
+        showNotification("Upload Failed", "Invalid target folder");
+      }
     } else if (info.menuItemId === ROOT_FOLDER_ID) {
       // Upload to root directory
-      handleImageUpload(info, null);
+      await handleImageUpload(info, null);
     } else if (info.menuItemId === PARENT_MENU_ID) {
       // This is the parent menu, which shouldn't be clickable
       console.log("Parent menu clicked, no action taken");
@@ -943,7 +898,7 @@ export default defineBackground(() => {
       console.log("Getting image data...");
 
       // Handle upload logic
-      handleImageClick(info, targetFolder);
+      await handleImageClick(info, targetFolder);
     } catch (error) {
       console.error("Error handling upload:", error);
       showNotification(

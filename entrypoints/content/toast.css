@@ -1,0 +1,78 @@
+.d2r2-toast-container {
+  position: fixed;
+  z-index: 9999;
+  top: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 350px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.d2r2-toast {
+  background-color: #0d0d0d;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 10px;
+  margin-top: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.24);
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: opacity 0.3s, transform 0.3s;
+  animation: fadeIn 0.3s ease-in-out;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.d2r2-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.d2r2-toast-icon {
+  margin-right: 8px;
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.d2r2-toast-content {
+  flex-grow: 1;
+}
+
+.d2r2-toast-title {
+  font-weight: normal;
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.d2r2-toast-message {
+  display: none;
+}
+
+.d2r2-toast-success .d2r2-toast-icon {
+  background-color: #00c7be;
+}
+
+.d2r2-toast-error .d2r2-toast-icon {
+  background-color: #ff2d55;
+}
+
+.d2r2-toast-loading .d2r2-toast-icon {
+  background-color: #999999;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

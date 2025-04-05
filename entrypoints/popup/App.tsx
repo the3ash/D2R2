@@ -2,13 +2,21 @@ import React, { useState, useEffect } from "react";
 import { AppConfig, getConfig, saveConfig } from "../../utils/storage";
 import "./style.css";
 
+// Form validation types
+interface ValidationErrors {
+  workerUrl?: string;
+  cloudflareId?: string;
+}
+
 export default function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
+    {}
+  );
 
   // Load configuration
   useEffect(() => {
@@ -32,20 +40,39 @@ export default function App() {
     loadConfig();
   }, []);
 
+  // Validate form fields
+  const validateForm = (): ValidationErrors => {
+    const errors: ValidationErrors = {};
+
+    if (!config?.workerUrl?.trim()) {
+      errors.workerUrl = "Worker URL is required";
+    }
+
+    if (!config?.cloudflareId?.trim()) {
+      errors.cloudflareId = "Cloudflare ID is required";
+    }
+
+    return errors;
+  };
+
   // Save configuration and test connection
   const saveAndTestConnection = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!config) return;
 
+    // Validate form
+    const errors = validateForm();
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
     setIsSaving(true);
     setError(null);
+    setValidationErrors({});
 
     try {
-      if (!config.workerUrl) {
-        throw new Error("Connection failed, try again or change settings");
-      }
-
       let workerUrl = config.workerUrl.trim();
       if (
         !workerUrl.startsWith("http://") &&
@@ -57,10 +84,9 @@ export default function App() {
 
       // Test GET request with longer timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10-second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
       try {
-        // Test Worker connection
         const testResponse = await fetch(workerUrl, {
           method: "GET",
           headers: {
@@ -72,7 +98,6 @@ export default function App() {
         clearTimeout(timeoutId);
 
         if (!testResponse.ok) {
-          // Try to get more information from the response
           let errorDetail = "";
           try {
             const responseText = await testResponse.text();
@@ -84,11 +109,10 @@ export default function App() {
           }
 
           throw new Error(
-            `Connection failed, try again or change settings: ${testResponse.status} ${testResponse.statusText}${errorDetail}`
+            `Connection failed: ${testResponse.status} ${testResponse.statusText}${errorDetail}`
           );
         }
 
-        // Test successful, show message
         const responseText = await testResponse.text();
         try {
           const responseJson = JSON.parse(responseText);
@@ -99,19 +123,16 @@ export default function App() {
       } catch (err) {
         clearTimeout(timeoutId);
         if (err instanceof Error && err.name === "AbortError") {
-          throw new Error("Connection failed, try again or change settings");
+          throw new Error("Connection timeout");
         }
         throw err;
       }
 
-      // If connection test passes, save the configuration with corrected URL
       await saveConfig(config);
-      // Switch to view mode
       setIsViewMode(true);
     } catch (err) {
-      setError("Connection failed, try again or change settings");
+      setError(err instanceof Error ? err.message : "Connection failed");
       console.error(err);
-      // Add timer for error message to automatically disappear
       setTimeout(() => setError(null), 2000);
     } finally {
       setIsSaving(false);
@@ -135,13 +156,13 @@ export default function App() {
           <button
             onClick={handleEdit}
             className="edit-btn font-body-m"
-            disabled={isEditing}
+            disabled={isSaving}
             style={{
-              opacity: isEditing ? 0.24 : 1,
-              cursor: isEditing ? "not-allowed" : "pointer",
+              opacity: isSaving ? 0.24 : 1,
+              cursor: isSaving ? "not-allowed" : "pointer",
             }}
           >
-            {isEditing ? (
+            {isSaving ? (
               <svg
                 className="loading-icon"
                 width="16"
@@ -197,7 +218,9 @@ export default function App() {
             <input
               id="cloudflare-id"
               type="text"
-              className="font-body"
+              className={`font-body ${
+                validationErrors.cloudflareId ? "error" : ""
+              }`}
               value={config?.cloudflareId || ""}
               onChange={(e) =>
                 setConfig((prev) =>
@@ -209,6 +232,11 @@ export default function App() {
               autoComplete="off"
               spellCheck={false}
             />
+            {validationErrors.cloudflareId && (
+              <div className="error-message">
+                {validationErrors.cloudflareId}
+              </div>
+            )}
           </div>
 
           <div className="form-group">
@@ -218,7 +246,9 @@ export default function App() {
             <input
               id="worker-url"
               type="text"
-              className="font-body"
+              className={`font-body ${
+                validationErrors.workerUrl ? "error" : ""
+              }`}
               value={config?.workerUrl || ""}
               onChange={(e) =>
                 setConfig((prev) =>
@@ -230,6 +260,9 @@ export default function App() {
               autoComplete="off"
               spellCheck={false}
             />
+            {validationErrors.workerUrl && (
+              <div className="error-message">{validationErrors.workerUrl}</div>
+            )}
           </div>
 
           <div>
@@ -275,42 +308,37 @@ export default function App() {
             </div>
           </div>
 
-          <div className="save-btn-container">
-            <button
-              type="submit"
-              className="save-btn font-body-m"
-              disabled={isSaving}
-              style={{
-                opacity: isSaving ? 0.24 : 1,
-                cursor: isSaving ? "not-allowed" : "pointer",
-              }}
-            >
-              {isSaving ? (
-                <svg
-                  className="loading-icon"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <circle
-                    className="spinner"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    fill="none"
-                    strokeWidth="1.35"
-                    stroke="currentColor"
-                    strokeDasharray="32"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              ) : (
-                "Save Settings"
-              )}
-            </button>
-            {error && <div className="error-message-text">{error}</div>}
-          </div>
+          {error && <div className="error-message">{error}</div>}
+
+          <button
+            type="submit"
+            className="save-btn font-body-m"
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <svg
+                className="loading-icon"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <circle
+                  className="spinner"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  fill="none"
+                  strokeWidth="1.35"
+                  stroke="currentColor"
+                  strokeDasharray="32"
+                  strokeLinecap="round"
+                />
+              </svg>
+            ) : (
+              "Save"
+            )}
+          </button>
         </form>
       )}
     </div>

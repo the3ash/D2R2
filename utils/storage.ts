@@ -3,7 +3,6 @@ export interface BucketConfig {
   id: string;
   name: string;
   folders: string[];
-  // Add other properties needed for BucketConfig
 }
 
 export interface AppConfig {
@@ -26,25 +25,32 @@ const defaultConfig: AppConfig = {
 // Storage keys
 const STORAGE_KEY = "d2r2_config";
 
+// Helper function to handle storage errors
+async function handleStorageError<T>(
+  operation: () => Promise<T>,
+  fallback: T
+): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    console.error("Storage operation failed:", error);
+    return fallback;
+  }
+}
+
 // Get configuration from storage
 export async function getConfig(): Promise<AppConfig> {
-  try {
+  return handleStorageError(async () => {
     const result = await chrome.storage.sync.get(STORAGE_KEY);
     return result[STORAGE_KEY] || defaultConfig;
-  } catch (error) {
-    console.error("Failed to get config:", error);
-    return defaultConfig;
-  }
+  }, defaultConfig);
 }
 
 // Save configuration to storage
 export async function saveConfig(config: AppConfig): Promise<void> {
-  try {
+  await handleStorageError(async () => {
     await chrome.storage.sync.set({ [STORAGE_KEY]: config });
-  } catch (error) {
-    console.error("Failed to save config:", error);
-    throw error;
-  }
+  }, undefined);
 }
 
 // Add a new bucket to configuration
