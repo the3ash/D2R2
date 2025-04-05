@@ -5,7 +5,7 @@
 
 # D2R2 - Drop images to Cloudflare R2
 
-A Chrome extension for uploading images from web pages to Cloudflare R2 buckets via right-click.
+A Chrome extension for uploading images from web pages to a Cloudflare R2 bucket via right-click.
 
 ## Installation
 
@@ -25,7 +25,7 @@ A Chrome extension for uploading images from web pages to Cloudflare R2 buckets 
 
 This extension requires a Cloudflare Worker to function. Here are the complete deployment steps:
 
-> You can find the Worker code example in [worker_sample.js](./worker_sample.js).
+You can find the Worker code example in [worker_sample.js](./worker_sample.js).
 
 ## Implementation Details
 
@@ -135,11 +135,7 @@ This extension uses the **Worker-bound R2 bucket** pattern:
 3. Consider adding additional authentication mechanisms, such as custom tokens
 4. Regularly rotate R2 access keys
 
-### 5. Example Worker Code
-
-Worker code example can be found in [worker_sample.js](./worker_sample.js). Copy it to your Worker and modify according to your needs.
-
-### 6. Worker Configuration in Extension
+### 5. Worker Configuration in Extension
 
 1. Install and open the extension
 2. In the popup configuration page:
