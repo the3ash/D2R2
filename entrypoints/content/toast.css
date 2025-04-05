@@ -1,13 +1,14 @@
 .d2r2-toast-container {
-  position: fixed;
-  z-index: 9999;
-  top: 48px;
-  left: 50%;
-  transform: translateX(-50%);
-  max-width: 350px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  position: fixed !important;
+  z-index: 9999999 !important;
+  top: 48px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  max-width: 350px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  pointer-events: none !important;
 }
 
 .d2r2-toast {
@@ -20,16 +21,8 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.24);
   display: flex;
   align-items: center;
-  opacity: 0;
-  transform: translateY(-20px);
-  transition: opacity 0.3s, transform 0.3s;
-  animation: fadeIn 0.3s ease-in-out;
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-}
-
-.d2r2-toast.show {
-  opacity: 1;
-  transform: translateY(0);
+  pointer-events: none;
 }
 
 .d2r2-toast-icon {
@@ -64,15 +57,4 @@
 
 .d2r2-toast-loading .d2r2-toast-icon {
   background-color: #999999;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }

@@ -8,15 +8,85 @@ export default defineContentScript({
   main() {
     console.log("D2R2 content script loaded");
 
+    // Track if toast container exists
+    let toastContainerExists = false;
+
     // Create toast container
     const setupToastContainer = () => {
+      // If it already exists, remove it first (to avoid multiple containers when script is loaded multiple times)
+      const existingContainer = document.querySelector(".d2r2-toast-container");
+      if (existingContainer) {
+        existingContainer.remove();
+      }
+
       const container = document.createElement("div");
       container.className = "d2r2-toast-container";
-      document.body.appendChild(container);
+
+      // Ensure container is always mounted to the top level of body
+      const appendToBody = () => {
+        if (document.body) {
+          document.body.appendChild(container);
+          toastContainerExists = true;
+          console.log("D2R2 toast container appended to body");
+        } else {
+          console.warn(
+            "Document body not available, will retry appending toast container"
+          );
+          setTimeout(appendToBody, 100);
+        }
+      };
+
+      // Try to mount container
+      appendToBody();
+
       return container;
     };
 
     const toastContainer = setupToastContainer();
+
+    // Monitor DOM changes to ensure toast container is not removed
+    const setupMutationObserver = () => {
+      // Return if browser doesn't support MutationObserver
+      if (!window.MutationObserver) {
+        console.warn(
+          "MutationObserver not supported, toast container may be unstable"
+        );
+        return;
+      }
+
+      // Create observer instance
+      const observer = new MutationObserver((mutations) => {
+        // If toast container has been removed, re-add it
+        if (
+          toastContainerExists &&
+          !document.querySelector(".d2r2-toast-container")
+        ) {
+          console.warn("Toast container was removed, re-appending to body");
+          toastContainerExists = false;
+          setupToastContainer();
+        }
+      });
+
+      // Configure observation options
+      const config = {
+        childList: true,
+        subtree: true,
+      };
+
+      // Start observing document.body
+      if (document.body) {
+        observer.observe(document.body, config);
+        console.log(
+          "MutationObserver started watching for toast container removal"
+        );
+      } else {
+        // If body doesn't exist, try again later
+        setTimeout(() => setupMutationObserver(), 100);
+      }
+    };
+
+    // Start monitoring
+    setupMutationObserver();
 
     // Store current active upload toast
     let currentUploadToast: HTMLElement | null = null;
@@ -27,6 +97,10 @@ export default defineContentScript({
       const toast = document.createElement("div");
       toast.className = `d2r2-toast d2r2-toast-${type}`;
       toast.dataset.toastId = toastId;
+      // Use inline styles to control initial position
+      toast.style.transform = "translateY(-20px)";
+      toast.style.opacity = "0";
+      toast.style.pointerEvents = "auto";
       return toast;
     };
 
@@ -54,8 +128,11 @@ export default defineContentScript({
 
     // Helper function to remove toast
     const removeToast = (toast: HTMLElement) => {
+      // First move up and fade out
+      toast.style.transition = "opacity 0.2s, transform 0.2s";
       toast.style.opacity = "0";
-      toast.style.transform = "translateY(20px)";
+      toast.style.transform = "translateY(-20px)";
+
       setTimeout(() => {
         toast.remove();
         if (toast === currentUploadToast) {
@@ -94,14 +171,20 @@ export default defineContentScript({
           currentUploadTimeoutId = null;
         }
 
-        currentUploadToast.className = `d2r2-toast d2r2-toast-${type} show`;
+        // Update class name but don't use show class
+        currentUploadToast.className = `d2r2-toast d2r2-toast-${type}`;
         updateToastContent(currentUploadToast, displayTitle, message);
 
+        // If not in loading state, set timer to remove
         if (type !== "loading") {
           currentUploadTimeoutId = window.setTimeout(
             () => removeToast(currentUploadToast!),
             1000
           );
+        } else {
+          // If in loading state, ensure it's displayed
+          currentUploadToast.style.opacity = "1";
+          currentUploadToast.style.transform = "translateY(0)";
         }
 
         return currentUploadToast;
@@ -131,7 +214,24 @@ export default defineContentScript({
       `;
 
       toastContainer.appendChild(toast);
-      setTimeout(() => toast.classList.add("show"), 10);
+
+      // Use JavaScript to directly control animation, not relying on CSS classes
+      // Ensure it appears from top to bottom
+      requestAnimationFrame(() => {
+        // Start from top, set styles first
+        toast.style.opacity = "0";
+        toast.style.transform = "translateY(-20px)";
+
+        // Force browser repaint
+        toast.offsetHeight;
+
+        // Set transition
+        toast.style.transition = "opacity 0.3s, transform 0.3s";
+
+        // Move to target position
+        toast.style.opacity = "1";
+        toast.style.transform = "translateY(0)";
+      });
 
       if (type !== "loading") {
         const timeoutId = window.setTimeout(() => removeToast(toast), 1000);
