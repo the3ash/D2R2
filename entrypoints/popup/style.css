@@ -13,7 +13,6 @@
   --fg: rgba(13, 13, 13, 0.05);
   --fg-2: rgba(13, 13, 13, 0.1);
   --bg: #ffffff;
-  --bg-dark: #0d0d0d;
   --orange: #ff7900;
   --orange-light: #ff9433;
   --orange-2: rgba(255, 121, 0, 0.12);
@@ -142,7 +141,7 @@ body {
   appearance: none;
   -webkit-appearance: none;
   background-color: transparent;
-  border: 1px solid var(--border);
+  border: 1.35px solid var(--border);
   border-radius: 50%;
   outline: none;
   position: relative;
@@ -324,12 +323,11 @@ input::placeholder {
     --text-oncolor: #ffffff;
     --fg: rgba(255, 255, 255, 0.08);
     --fg-2: rgba(255, 255, 255, 0.12);
-    --bg: #ffffff;
-    --bg-dark: #0d0d0d;
+    --bg: #0d0d0d;
     --orange: #ff7900;
     --orange-light: #ff9433;
     --orange-2: rgba(255, 121, 0, 0.12);
-    --border: rgba(255, 255, 255, 0.1);
+    --border: rgba(255, 255, 255, 0.16);
     --loading: #999999;
     --success: #00c7be;
     --error: #ff2d55;
