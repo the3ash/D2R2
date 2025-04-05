@@ -7,8 +7,56 @@ const PARENT_MENU_ID = "d2r2-parent";
 const ROOT_FOLDER_ID = "bucket-root";
 const FOLDER_PREFIX = "folder-";
 
+const TOAST_STATUS = {
+  DROPPING: "Dropping",
+  DONE: "Done",
+  FAILED: "Failed",
+};
+
 // Extension initialization status
 let extensionInitialized = false;
+let initializationAttempts = 0;
+const MAX_INITIALIZATION_ATTEMPTS = 10;
+const INITIALIZATION_CHECK_INTERVAL = 300; // 300ms
+
+// Add initialization mutex
+let isInitializing = false;
+let lastInitTime = 0;
+const MIN_INIT_INTERVAL = 500; // 最小初始化间隔时间(ms)
+
+// Add page state tracking
+let activeTabId: number | null = null;
+let lastMenuClickTime = 0;
+const MENU_CLICK_COOLDOWN = 300; // Reduced cooldown to 300ms
+let lastActiveUrl: string | null = null;
+let pendingMenuClicks: Array<{
+  info: chrome.contextMenus.OnClickData;
+  tab?: chrome.tabs.Tab;
+  timestamp: number;
+}> = [];
+const MAX_RETRY_COUNT = 3;
+const RETRY_INTERVAL = 500; // ms
+
+// Add more detailed logging
+console.log = (function (originalLog) {
+  return function (...args) {
+    const timestamp = new Date()
+      .toISOString()
+      .replace("T", " ")
+      .substring(0, 19);
+    originalLog.apply(console, [`[${timestamp}]`, ...args]);
+  };
+})(console.log);
+
+console.error = (function (originalError) {
+  return function (...args) {
+    const timestamp = new Date()
+      .toISOString()
+      .replace("T", " ")
+      .substring(0, 19);
+    originalError.apply(console, [`[${timestamp}][ERROR]`, ...args]);
+  };
+})(console.error);
 
 // Helper function: Ensure Worker URL is properly formatted
 function formatWorkerUrl(url: string): string {
@@ -28,6 +76,83 @@ function handleError(error: unknown, context: string): string {
 export default defineBackground(() => {
   console.log("D2R2 extension initializing...");
 
+  // Process any pending menu clicks
+  setInterval(() => {
+    if (pendingMenuClicks.length > 0 && extensionInitialized) {
+      console.log(
+        `Processing ${pendingMenuClicks.length} pending menu clicks...`
+      );
+      const pendingClick = pendingMenuClicks.shift();
+      if (pendingClick) {
+        const elapsedTime = Date.now() - pendingClick.timestamp;
+        console.log(`Processing click from ${elapsedTime}ms ago`);
+
+        // Show toast for pending click being processed
+        showPageToast(
+          TOAST_STATUS.DROPPING,
+          "Dropping",
+          "loading",
+          undefined,
+          `upload_queue_${Date.now()}`
+        );
+
+        processMenuClick(pendingClick.info, pendingClick.tab);
+      }
+    }
+  }, 1000);
+
+  // Add tab update listener
+  chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    if (changeInfo.status === "complete" && tab.url) {
+      console.log(`Tab ${tabId} updated:`, {
+        url: tab.url,
+        lastUrl: lastActiveUrl,
+        isActiveTab: tabId === activeTabId,
+      });
+
+      // Always reinitialize when a tab completes loading
+      console.log("Tab changed, reinitializing extension...");
+      activeTabId = tabId;
+      lastActiveUrl = tab.url;
+      await reinitializeForTab(tabId);
+    }
+  });
+
+  // Add tab activation listener
+  chrome.tabs.onActivated.addListener(async (activeInfo) => {
+    console.log("Tab activated:", activeInfo);
+    // Always reinitialize when tab changes
+    activeTabId = activeInfo.tabId;
+    await reinitializeForTab(activeInfo.tabId);
+  });
+
+  // Add window focus change listener
+  chrome.windows.onFocusChanged.addListener(async (windowId) => {
+    // WINDOW_ID_NONE (-1) means focus left Chrome
+    if (windowId !== chrome.windows.WINDOW_ID_NONE) {
+      console.log("Browser window regained focus, windowId:", windowId);
+
+      // Get active tab in focused window
+      try {
+        const tabs = await chrome.tabs.query({ active: true, windowId });
+        if (tabs && tabs.length > 0 && tabs[0].id) {
+          console.log(
+            "Reinitializing for focused window active tab:",
+            tabs[0].id
+          );
+          activeTabId = tabs[0].id;
+          await reinitializeForTab(tabs[0].id);
+
+          // Special handling to ensure menu is working
+          extensionInitialized = false;
+          await quickInitialize();
+        }
+      } catch (error) {
+        console.error("Error handling window focus:", error);
+      }
+    }
+  });
+
   // Create test message listener
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log("Received message:", message);
@@ -46,7 +171,7 @@ export default defineBackground(() => {
 
       // Show test start notification
       try {
-        showNotification("Connection Test", "Testing Worker connection...");
+        showNotification(TOAST_STATUS.DROPPING, "Testing Worker connection...");
       } catch (e) {
         console.error("Failed to show notification:", e);
       }
@@ -69,7 +194,7 @@ export default defineBackground(() => {
         .then((text) => {
           if (!text || text.trim() === "") {
             showNotification(
-              "Connection Test",
+              TOAST_STATUS.FAILED,
               "Worker returned an empty response, please check configuration"
             );
             sendResponse({
@@ -83,7 +208,7 @@ export default defineBackground(() => {
             const data = JSON.parse(text);
             if (data && data.success) {
               showNotification(
-                "Connection Successful",
+                TOAST_STATUS.DONE,
                 `Worker connection normal: ${
                   data.message || "Connection successful"
                 }`
@@ -92,12 +217,12 @@ export default defineBackground(() => {
             } else {
               const errorMsg =
                 data.error || "Worker returned an abnormal response";
-              showNotification("Connection Issue", errorMsg);
+              showNotification(TOAST_STATUS.FAILED, errorMsg);
               sendResponse({ success: false, error: errorMsg });
             }
           } catch (e) {
             showNotification(
-              "Connection Test",
+              TOAST_STATUS.DONE,
               "Worker response is not JSON format, but connection succeeded"
             );
             sendResponse({
@@ -112,7 +237,7 @@ export default defineBackground(() => {
         })
         .catch((error) => {
           const errorMessage = handleError(error, "Connection test");
-          showNotification("Connection Failed", errorMessage);
+          showNotification(TOAST_STATUS.FAILED, errorMessage);
           sendResponse({ success: false, error: errorMessage });
         });
 
@@ -124,6 +249,16 @@ export default defineBackground(() => {
   async function initializeExtension() {
     try {
       console.log("Starting extension initialization...");
+
+      // Get current active tab
+      const tabs = await chrome.tabs.query({
+        active: true,
+        currentWindow: true,
+      });
+      if (tabs && tabs[0]?.id) {
+        activeTabId = tabs[0].id;
+        console.log(`Initializing for active tab ${activeTabId}`);
+      }
 
       // Verify icon resources are available
       try {
@@ -237,11 +372,11 @@ export default defineBackground(() => {
     info: chrome.contextMenus.OnClickData,
     targetFolder?: string | null
   ) {
-    console.log("Processing image upload...");
+    console.log("Starting image upload...");
 
     if (!info.srcUrl) {
       console.error("Error: Unable to get image URL");
-      showNotification("Upload Failed", "Unable to get image URL");
+      showNotification(TOAST_STATUS.FAILED, "Unable to get image URL");
       return;
     }
 
@@ -265,7 +400,7 @@ export default defineBackground(() => {
           "Configuration error: Missing required Cloudflare ID or Worker URL"
         );
         showNotification(
-          "Configuration Error",
+          TOAST_STATUS.FAILED,
           "Please complete extension configuration"
         );
         chrome.runtime.openOptionsPage();
@@ -279,12 +414,9 @@ export default defineBackground(() => {
       const uploadId = `upload_${Date.now()}`;
 
       // Show upload start toast (loading state)
-      const uploadStartMsg = `Uploading image${
-        folderPath ? ` to ${folderPath}` : ""
-      }...`;
       await showPageToast(
-        "Uploading",
-        uploadStartMsg,
+        TOAST_STATUS.DROPPING,
+        "Dropping",
         "loading",
         undefined,
         uploadId
@@ -313,6 +445,15 @@ export default defineBackground(() => {
         if (!imageBlob.type.startsWith("image/")) {
           console.warn(`Got data is not image type: ${imageBlob.type}`);
         }
+
+        // Update toast to show still processing
+        await showPageToast(
+          TOAST_STATUS.DROPPING,
+          "Dropping",
+          "loading",
+          undefined,
+          uploadId
+        );
 
         // 3. Generate file name (based on original URL and timestamp)
         const urlObj = new URL(info.srcUrl);
@@ -343,6 +484,16 @@ export default defineBackground(() => {
 
         // 5. Send FormData to Worker
         console.log(`Sending image data to Worker: ${formattedWorkerUrl}`);
+
+        // Update toast to show sending
+        await showPageToast(
+          TOAST_STATUS.DROPPING,
+          "Dropping",
+          "loading",
+          undefined,
+          uploadId
+        );
+
         const response = await fetch(formattedWorkerUrl, {
           method: "POST",
           body: formData,
@@ -356,6 +507,15 @@ export default defineBackground(() => {
         try {
           const respText = await response.text();
           console.log("Worker response:", respText);
+
+          // Update toast to show processing response
+          await showPageToast(
+            TOAST_STATUS.DROPPING,
+            "Dropping",
+            "loading",
+            undefined,
+            uploadId
+          );
 
           try {
             result = JSON.parse(respText);
@@ -392,7 +552,13 @@ export default defineBackground(() => {
 
         // Handle upload result
         if (result.success) {
-          console.log("Upload successful:", result.url);
+          console.log(
+            `Upload successful! URL: ${
+              result.url
+                ? result.url.substring(0, 60) + "..."
+                : "No URL returned"
+            }`
+          );
 
           // Try copying URL to clipboard
           let successMessage = "Image uploaded successfully";
@@ -413,7 +579,7 @@ export default defineBackground(() => {
 
           // Update toast to success state
           await showPageToast(
-            "Upload Successful",
+            TOAST_STATUS.DONE,
             successMessage,
             "success",
             undefined,
@@ -425,7 +591,7 @@ export default defineBackground(() => {
 
           if (result.error) {
             console.error(
-              "Original error information:",
+              "Upload failure details:",
               typeof result.error,
               result.error
             );
@@ -441,25 +607,31 @@ export default defineBackground(() => {
               errorStr.includes("Unable to get image")
             ) {
               errorMessage =
-                "Unable to get image, website may restrict external access";
+                "Upload failed: Website may restrict external access to images";
+              console.error(
+                "Upload failed: Website may restrict external access to images"
+              );
             } else if (
               errorStr.includes("Unauthorized") ||
               errorStr.includes("403")
             ) {
               errorMessage =
-                "Access denied, please check if Cloudflare ID is correct";
+                "Upload failed: Access denied, please check if Cloudflare ID is correct";
+              console.error(
+                "Upload failed: Access denied, please check if Cloudflare ID is correct"
+              );
             } else {
-              errorMessage = `Error: ${errorStr}`;
+              errorMessage = `Upload failed: ${errorStr}`;
+              console.error(`Upload failed: ${errorStr}`);
             }
           } else {
             errorMessage = "Unknown error occurred during upload";
+            console.error("Upload failed: Unknown error");
           }
-
-          console.error("Upload failed:", result.error);
 
           // Update toast to error state
           await showPageToast(
-            "Upload Failed",
+            TOAST_STATUS.FAILED,
             errorMessage,
             "error",
             undefined,
@@ -474,7 +646,7 @@ export default defineBackground(() => {
           fetchError instanceof Error ? fetchError.message : String(fetchError)
         }`;
         await showPageToast(
-          "Get Failed",
+          TOAST_STATUS.FAILED,
           errorMessage,
           "error",
           undefined,
@@ -492,7 +664,7 @@ export default defineBackground(() => {
         error instanceof Error ? error.message : "Unknown error"
       }`;
       await showPageToast(
-        "Error",
+        TOAST_STATUS.FAILED,
         errorMessage,
         "error",
         undefined,
@@ -521,7 +693,12 @@ export default defineBackground(() => {
       }
 
       const activeTab = tabs[0];
-      console.log(`Attempting to send toast message to tab #${activeTab.id}`);
+      console.log(
+        `[Toast][${toastId || "unknown"}] ${title}: ${message.substring(
+          0,
+          50
+        )}${message.length > 50 ? "..." : ""}`
+      );
 
       // Check tab URL to ensure not on chrome:// etc.
       if (
@@ -576,18 +753,19 @@ export default defineBackground(() => {
   function showNotification(title: string, message: string, imageUrl?: string) {
     try {
       // Also try to show toast on page
-      const toastType = title.includes("Successful")
-        ? "success"
-        : title.includes("Failed") || title.includes("Error")
-        ? "error"
-        : "info";
+      const toastType =
+        title === TOAST_STATUS.DONE
+          ? "success"
+          : title === TOAST_STATUS.FAILED
+          ? "error"
+          : "loading";
       const notificationId = `d2r2_${Date.now()}`;
       showPageToast(title, message, toastType, imageUrl, notificationId);
 
       console.log(
-        `Preparing to show notification: ${title} - ${message}${
-          imageUrl ? ` (URL: ${imageUrl})` : ""
-        }`
+        `[Notification] ${title}: ${message.substring(0, 50)}${
+          message.length > 50 ? "..." : ""
+        }${imageUrl ? ` (URL: ${imageUrl})` : ""}`
       );
 
       // Ensure notification permission
@@ -669,100 +847,472 @@ export default defineBackground(() => {
     }
   }
 
-  // Create or update right-click menu
-  async function updateContextMenu() {
+  // Handle menu click event with retries
+  async function processMenuClick(
+    info: chrome.contextMenus.OnClickData,
+    tab?: chrome.tabs.Tab,
+    retryCount = 0
+  ) {
     try {
+      console.log(`Processing menu click (retry=${retryCount}):`, {
+        menuItemId: info.menuItemId,
+        srcUrl: info.srcUrl ? info.srcUrl.substring(0, 100) + "..." : null,
+        tabId: tab?.id,
+        timestamp: new Date().toISOString(),
+        retryCount: retryCount,
+      });
+
+      if (!info.srcUrl) {
+        console.error("Unable to get image URL");
+        showNotification(TOAST_STATUS.FAILED, "Unable to get image URL");
+        return;
+      }
+
+      // Determine target folder
+      let targetFolder: string | null = null;
+
+      if (
+        typeof info.menuItemId === "string" &&
+        info.menuItemId.startsWith(FOLDER_PREFIX)
+      ) {
+        // Extract index from ID
+        const folderIndex = parseInt(
+          info.menuItemId.substring(FOLDER_PREFIX.length)
+        );
+        const config = await getConfig();
+        const folders = parseFolderPath(config.folderPath);
+        if (folders && folderIndex < folders.length) {
+          targetFolder = folders[folderIndex];
+          console.log(`Selected folder: ${targetFolder}`);
+          await handleImageUpload(info, targetFolder);
+        } else {
+          console.error("Invalid folder index");
+          showNotification(TOAST_STATUS.FAILED, "Invalid target folder");
+        }
+      } else if (info.menuItemId === ROOT_FOLDER_ID) {
+        // Upload to root directory
+        console.log("Uploading to root directory");
+        await handleImageUpload(info, null);
+      } else if (info.menuItemId === PARENT_MENU_ID) {
+        // This is the parent menu, which shouldn't be clickable
+        console.log("Parent menu clicked, no action taken");
+      } else {
+        console.error("Unknown menu item ID:", info.menuItemId);
+        showNotification(TOAST_STATUS.FAILED, "Invalid menu selection");
+      }
+    } catch (error) {
+      console.error(`Error in processMenuClick (retry=${retryCount}):`, error);
+
+      // Implement retry logic
+      if (retryCount < MAX_RETRY_COUNT) {
+        console.log(
+          `Retrying menu click in ${RETRY_INTERVAL}ms (attempt ${
+            retryCount + 1
+          }/${MAX_RETRY_COUNT})...`
+        );
+        setTimeout(() => {
+          processMenuClick(info, tab, retryCount + 1);
+        }, RETRY_INTERVAL);
+      } else {
+        console.error("Max retry attempts reached, giving up");
+        showNotification(
+          TOAST_STATUS.FAILED,
+          error instanceof Error
+            ? error.message
+            : "Unknown error in menu click handler",
+          undefined
+        );
+      }
+    }
+  }
+
+  // Helper function: Show notification if image is being processed
+  function showProcessingNotification(info: chrome.contextMenus.OnClickData) {
+    const srcUrl = info.srcUrl
+      ? info.srcUrl.substring(0, 30) + "..."
+      : "unknown";
+    showNotification(TOAST_STATUS.DROPPING, "Dropping", undefined);
+    console.log(
+      "Added to queue, will be processed when extension is fully initialized"
+    );
+  }
+
+  // Initial menu click handler - queues clicks if not ready
+  async function handleMenuClick(
+    info: chrome.contextMenus.OnClickData,
+    tab?: chrome.tabs.Tab
+  ) {
+    try {
+      // Record click timing
+      const now = Date.now();
+
+      // Always immediately show a processing toast, regardless of any conditions
+      const uploadId = `upload_click_${now}`;
+      await showPageToast(
+        TOAST_STATUS.DROPPING,
+        "Dropping",
+        "loading",
+        undefined,
+        uploadId
+      );
+
+      if (now - lastMenuClickTime < MENU_CLICK_COOLDOWN) {
+        console.log("Menu click ignored - in cooldown period");
+        return;
+      }
+      lastMenuClickTime = now;
+
+      // Always show a processing notification immediately
+      showProcessingNotification(info);
+
+      // Update active tab and URL
+      if (tab?.id) {
+        activeTabId = tab.id;
+        lastActiveUrl = tab.url || null;
+      }
+
+      console.log("Menu click event triggered", {
+        menuItemId: info.menuItemId,
+        srcUrl: info.srcUrl ? info.srcUrl.substring(0, 100) + "..." : null,
+        tabId: tab?.id,
+        extensionInitialized: extensionInitialized,
+      });
+
+      // Always force initialize on menu click to handle window switching case
+      console.log("Force initializing on menu click...");
+      extensionInitialized = false;
+      const quickInitResult = await quickInitialize();
+      extensionInitialized = true; // Force set to true even if quick init failed
+      console.log("Force initialization completed");
+
+      // Update toast to indicate processing
+      await showPageToast(
+        TOAST_STATUS.DROPPING,
+        "Dropping",
+        "loading",
+        undefined,
+        uploadId
+      );
+
+      // Process the click immediately
+      await processMenuClick(info, tab);
+    } catch (error) {
+      console.error("Error in handleMenuClick:", error);
+
+      // Add to pending queue as fallback
+      pendingMenuClicks.push({
+        info,
+        tab,
+        timestamp: Date.now(),
+      });
+
+      // Show dropping notification
+      showProcessingNotification(info);
+    }
+  }
+
+  // Quick initialization function for faster response
+  async function quickInitialize(): Promise<boolean> {
+    try {
+      // 防止并发初始化
+      if (isInitializing) {
+        console.log("Another initialization is in progress, waiting...");
+        // 等待先前的初始化完成
+        let waitCount = 0;
+        while (isInitializing && waitCount < 10) {
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          waitCount++;
+        }
+
+        if (isInitializing) {
+          console.log(
+            "Waited too long for previous initialization, forcing continuation"
+          );
+        } else {
+          console.log("Previous initialization completed, continuing");
+          return extensionInitialized;
+        }
+      }
+
+      // 检查初始化间隔
+      const now = Date.now();
+      if (now - lastInitTime < MIN_INIT_INTERVAL) {
+        console.log(
+          `Last initialization was ${now - lastInitTime}ms ago, too recent`
+        );
+        return extensionInitialized;
+      }
+
+      // 设置互斥锁和时间戳
+      isInitializing = true;
+      lastInitTime = now;
+
+      console.log("Attempting quick initialization...");
+
+      // Force clear and recreate menus
+      try {
+        await chrome.contextMenus.removeAll();
+        console.log("Cleared existing menus in quick initialization");
+      } catch (e) {
+        console.log("Error clearing menus (non-critical):", e);
+      }
+
+      // Update context menu
+      await updateContextMenu();
+
+      // Check content script if we have an active tab
+      if (activeTabId) {
+        try {
+          // Non-blocking ping to content script
+          chrome.tabs.sendMessage(
+            activeTabId,
+            { action: "ping" },
+            (response) => {
+              if (chrome.runtime.lastError) {
+                console.log(
+                  "Content script not ready in active tab:",
+                  chrome.runtime.lastError.message
+                );
+              } else {
+                console.log("Content script is ready in active tab");
+              }
+            }
+          );
+        } catch (e) {
+          console.log("Error checking content script (non-critical):", e);
+        }
+      }
+
+      // Set flag
+      extensionInitialized = true;
+      console.log("Quick initialization complete");
+      return true;
+    } catch (error) {
+      console.error("Quick initialization failed:", error);
+      return false;
+    } finally {
+      // 释放互斥锁
+      isInitializing = false;
+    }
+  }
+
+  // Add new function to reinitialize extension for a specific tab
+  async function reinitializeForTab(tabId: number) {
+    try {
+      // 防止并发初始化
+      if (isInitializing) {
+        console.log(
+          `Reinitialization for tab ${tabId} skipped - another initialization in progress`
+        );
+        return;
+      }
+
+      // 检查初始化间隔
+      const now = Date.now();
+      if (now - lastInitTime < MIN_INIT_INTERVAL) {
+        console.log(
+          `Last initialization was ${
+            now - lastInitTime
+          }ms ago, skipping for tab ${tabId}`
+        );
+        return;
+      }
+
+      // 设置互斥锁和时间戳
+      isInitializing = true;
+      lastInitTime = now;
+
+      console.log(`Reinitializing extension for tab ${tabId}...`);
+
+      // Reset initialization state
+      extensionInitialized = false;
+
+      // Clear existing menus to avoid conflicts
+      try {
+        await chrome.contextMenus.removeAll();
+        console.log("Cleared existing menus in reinitialization");
+      } catch (e) {
+        console.log("Error clearing menus (non-critical):", e);
+      }
+
+      // Update context menu
+      await updateContextMenu();
+
+      // Verify content script is loaded with timeout
+      let contentScriptReady = false;
+      try {
+        await new Promise<void>((resolve) => {
+          chrome.tabs.sendMessage(tabId, { action: "ping" }, (response) => {
+            if (!chrome.runtime.lastError && response) {
+              console.log("Content script verified for tab", tabId);
+              contentScriptReady = true;
+            }
+            resolve();
+          });
+
+          // Add timeout to ensure promise resolves
+          setTimeout(resolve, 300);
+        });
+      } catch (error) {
+        console.log("Content script check error (non-critical):", error);
+      }
+
+      // Set initialization flag
+      extensionInitialized = true;
+      console.log(
+        `Extension reinitialized for tab ${tabId}, content script ready: ${contentScriptReady}`
+      );
+
+      // Process any pending clicks
+      if (pendingMenuClicks.length > 0) {
+        console.log(
+          `Processing ${pendingMenuClicks.length} pending clicks after reinitialization`
+        );
+      }
+    } catch (error) {
+      console.error("Failed to reinitialize extension:", error);
+      // Still set initialization flag to true to prevent getting stuck
+      extensionInitialized = true;
+    } finally {
+      // 释放互斥锁
+      isInitializing = false;
+    }
+  }
+
+  // Helper function to safely create menu item
+  async function safeCreateMenuItem(
+    properties: chrome.contextMenus.CreateProperties
+  ): Promise<boolean> {
+    return new Promise((resolve) => {
+      try {
+        chrome.contextMenus.create(properties, () => {
+          if (chrome.runtime.lastError) {
+            console.error(
+              `Failed to create menu item ${properties.id}:`,
+              JSON.stringify(chrome.runtime.lastError)
+            );
+            resolve(false);
+          } else {
+            resolve(true);
+          }
+        });
+      } catch (e) {
+        console.error(`Exception creating menu item ${properties.id}:`, e);
+        resolve(false);
+      }
+    });
+  }
+
+  // Create or update right-click menu
+  async function updateContextMenu(retryCount = 0) {
+    try {
+      console.log(`Updating context menu (retry=${retryCount})...`);
+
       // First clear existing menu
       await chrome.contextMenus.removeAll();
       console.log("Existing menu items cleared");
 
+      // Add a small delay to ensure menu clearing is complete
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
       // Get current configuration
       const config = await getConfig();
+
+      // Log config details (redacted for security)
+      console.log("Context menu configuration:", {
+        folderCount: !!config.folderPath
+          ? parseFolderPath(config.folderPath).length
+          : 0,
+        hideRoot: config.hideRoot,
+        hasCloudflareId: !!config.cloudflareId,
+        hasWorkerUrl: !!config.workerUrl,
+      });
+
       const folders = parseFolderPath(config.folderPath);
+
+      // Add safety delay to ensure previous menu operations are completed
+      if (retryCount > 0) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
 
       // Based on folder path count and hideRoot setting, decide menu structure
       if (!folders || folders.length === 0) {
         // Case 1: No folder path, create single menu item
-        chrome.contextMenus.create(
-          {
-            id: ROOT_FOLDER_ID,
-            title: "Drop to R2",
-            contexts: ["image"],
-          },
-          checkMenuCreation
-        );
-        console.log("Single menu item created: Drop to R2");
+        await safeCreateMenuItem({
+          id: ROOT_FOLDER_ID,
+          title: "Drop to R2",
+          contexts: ["image"],
+        });
       } else if (folders.length === 1 && config.hideRoot) {
-        // Case 2: Single folder path with hideRoot enabled, create single menu item with folder name
+        // Case 2: Single folder path with hideRoot enabled
         const folderName = folders[0];
-        chrome.contextMenus.create(
-          {
-            id: `${FOLDER_PREFIX}0`,
-            title: `Drop to R2 / ${folderName}`.replace(/\s*\/\s*/g, " / "),
-            contexts: ["image"],
-          },
-          checkMenuCreation
-        );
-        console.log(`Single menu item created: Drop to R2 / ${folderName}`);
+        await safeCreateMenuItem({
+          id: `${FOLDER_PREFIX}0`,
+          title: `Drop to R2 / ${folderName}`.replace(/\s*\/\s*/g, " / "),
+          contexts: ["image"],
+        });
       } else {
-        // Case 3: Multiple folder paths or hideRoot disabled, create parent menu and submenus
+        // Case 3: Multiple folder paths or hideRoot disabled
         // Create parent menu
-        chrome.contextMenus.create(
-          {
-            id: PARENT_MENU_ID,
-            title: "Drop to R2",
-            contexts: ["image"],
-          },
-          checkMenuCreation
-        );
+        const parentCreated = await safeCreateMenuItem({
+          id: PARENT_MENU_ID,
+          title: "Drop to R2",
+          contexts: ["image"],
+        });
+
+        if (!parentCreated) {
+          console.log(
+            "Failed to create parent menu, aborting submenu creation"
+          );
+          return false;
+        }
+
+        console.log("Parent menu created successfully");
 
         // Add "Upload to root directory" option if not hidden
         if (!config.hideRoot) {
-          chrome.contextMenus.create(
-            {
-              id: ROOT_FOLDER_ID,
-              parentId: PARENT_MENU_ID,
-              title: "root" + " ".repeat(16),
-              contexts: ["image"],
-            },
-            checkMenuCreation
-          );
+          await safeCreateMenuItem({
+            id: ROOT_FOLDER_ID,
+            parentId: PARENT_MENU_ID,
+            title: "root" + " ".repeat(16),
+            contexts: ["image"],
+          });
         }
 
         // Create submenus for each folder
-        folders.forEach((folder, index) => {
-          chrome.contextMenus.create(
-            {
-              id: `${FOLDER_PREFIX}${index}`,
-              parentId: PARENT_MENU_ID,
-              title: ` / ${folder}`.replace(/\s*\/\s*/g, " / "),
-              contexts: ["image"],
-            },
-            checkMenuCreation
-          );
-        });
-
-        console.log(
-          `Menu created: Parent menu "D2R2" contains ${
-            folders.length + (config.hideRoot ? 0 : 1)
-          } subitems`
-        );
+        for (const [index, folder] of folders.entries()) {
+          await safeCreateMenuItem({
+            id: `${FOLDER_PREFIX}${index}`,
+            parentId: PARENT_MENU_ID,
+            title: ` / ${folder}`.replace(/\s*\/\s*/g, " / "),
+            contexts: ["image"],
+          });
+        }
       }
 
       // Register click event
       if (!chrome.contextMenus.onClicked.hasListener(handleMenuClick)) {
         chrome.contextMenus.onClicked.addListener(handleMenuClick);
         console.log("Menu click listener registered");
+      } else {
+        console.log("Menu click listener already registered");
       }
+
+      // Log result
+      console.log("Context menu update completed successfully");
+      return true;
     } catch (error) {
       console.error("Failed to create menu:", error);
-    }
-  }
 
-  // Check menu creation status
-  function checkMenuCreation() {
-    if (chrome.runtime.lastError) {
-      console.error("Menu creation failed:", chrome.runtime.lastError);
+      // Add retry logic with maximum retries
+      if (retryCount < 3) {
+        console.log(`Retrying menu creation (attempt ${retryCount + 1}/3)...`);
+        // Wait a moment before retrying
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        return updateContextMenu(retryCount + 1);
+      }
+
+      return false;
     }
   }
 
@@ -780,48 +1330,6 @@ export default defineBackground(() => {
       .filter((path) => path !== "");
   }
 
-  // Handle menu click event
-  async function handleMenuClick(
-    info: chrome.contextMenus.OnClickData,
-    tab?: chrome.tabs.Tab
-  ) {
-    console.log("Menu item clicked:", info.menuItemId);
-
-    if (!info.srcUrl) {
-      console.error("Unable to get image URL");
-      showNotification("Upload Failed", "Unable to get image URL");
-      return;
-    }
-
-    // Determine target folder
-    let targetFolder: string | null = null;
-
-    if (
-      typeof info.menuItemId === "string" &&
-      info.menuItemId.startsWith(FOLDER_PREFIX)
-    ) {
-      // Extract index from ID
-      const folderIndex = parseInt(
-        info.menuItemId.substring(FOLDER_PREFIX.length)
-      );
-      const config = await getConfig();
-      const folders = parseFolderPath(config.folderPath);
-      if (folders && folderIndex < folders.length) {
-        targetFolder = folders[folderIndex];
-        await handleImageUpload(info, targetFolder);
-      } else {
-        console.error("Invalid folder index");
-        showNotification("Upload Failed", "Invalid target folder");
-      }
-    } else if (info.menuItemId === ROOT_FOLDER_ID) {
-      // Upload to root directory
-      await handleImageUpload(info, null);
-    } else if (info.menuItemId === PARENT_MENU_ID) {
-      // This is the parent menu, which shouldn't be clickable
-      console.log("Parent menu clicked, no action taken");
-    }
-  }
-
   // Handle image upload
   async function handleImageUpload(
     info: chrome.contextMenus.OnClickData,
@@ -834,25 +1342,44 @@ export default defineBackground(() => {
         // Show upload status
         const uploadId = `upload_init_${Date.now()}`;
         await showPageToast(
-          "Please wait",
-          "Extension initializing, please try again later...",
+          TOAST_STATUS.DROPPING,
+          "Dropping",
           "loading",
           undefined,
           uploadId
         );
 
-        // Wait for a short period, check if initialization is completed
+        // Wait for initialization with more attempts
         let waitCount = 0;
-        while (!extensionInitialized && waitCount < 5) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
+        while (
+          !extensionInitialized &&
+          waitCount < MAX_INITIALIZATION_ATTEMPTS
+        ) {
+          await new Promise((resolve) =>
+            setTimeout(resolve, INITIALIZATION_CHECK_INTERVAL)
+          );
           waitCount++;
+          console.log(
+            `Initialization attempt ${waitCount}/${MAX_INITIALIZATION_ATTEMPTS}`
+          );
+
+          // Update toast while waiting
+          if (waitCount % 3 === 0) {
+            await showPageToast(
+              TOAST_STATUS.DROPPING,
+              "Dropping",
+              "loading",
+              undefined,
+              uploadId
+            );
+          }
         }
 
         // Check again
         if (!extensionInitialized) {
           await showPageToast(
-            "Unable to upload",
-            "Extension initializing, please try again in a few seconds",
+            TOAST_STATUS.FAILED,
+            "Extension initialization failed, please reload the extension",
             "error",
             undefined,
             uploadId
@@ -861,9 +1388,9 @@ export default defineBackground(() => {
         } else {
           // Initialized, update status
           await showPageToast(
-            "Ready",
-            "Extension initialized completed, processing upload...",
-            "info",
+            TOAST_STATUS.DROPPING,
+            "Dropping",
+            "loading",
             undefined,
             uploadId
           );
@@ -884,8 +1411,9 @@ export default defineBackground(() => {
           "Configuration error: Missing required Cloudflare ID or Worker URL"
         );
         showNotification(
-          "Configuration Error",
-          "Please complete extension configuration"
+          TOAST_STATUS.FAILED,
+          "Please complete extension configuration",
+          undefined
         );
         chrome.runtime.openOptionsPage();
         return;
@@ -902,12 +1430,14 @@ export default defineBackground(() => {
     } catch (error) {
       console.error("Error handling upload:", error);
       showNotification(
-        "Upload Failed",
-        error instanceof Error ? error.message : "Unknown error"
+        TOAST_STATUS.FAILED,
+        error instanceof Error ? error.message : "Unknown error",
+        undefined
       );
     }
   }
 
   // Initialize when the extension loads
   initializeExtension();
+  console.log("D2R2 extension background service started");
 });
