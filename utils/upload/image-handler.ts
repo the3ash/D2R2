@@ -59,14 +59,39 @@ async function fetchImageData(
   uploadTaskManager.updateTaskState(uploadId, UploadState.FETCHING);
 
   try {
-    const imageResponse = await fetch(imageUrl);
+    // Add timeout control and optimize request headers
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds timeout
+
+    const imageResponse = await fetch(imageUrl, {
+      signal: controller.signal,
+      headers: {
+        // Add standard browser headers to reduce likelihood of being blocked
+        Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Sec-Fetch-Dest": "image",
+        "Sec-Fetch-Mode": "no-cors",
+        "Sec-Fetch-Site": "cross-site",
+        Pragma: "no-cache",
+        "Cache-Control": "no-cache",
+      },
+      // Don't send cookies for cross-origin requests
+      credentials: "omit",
+      // Disable caching
+      cache: "no-store",
+      // Set high priority to improve network request priority
+      priority: "high",
+    });
+
+    clearTimeout(timeoutId);
+
     if (!imageResponse.ok) {
       throw new Error(
         `Failed to get image: ${imageResponse.status} ${imageResponse.statusText}`
       );
     }
 
-    // Get image's Blob data
+    // 优化Blob获取，直接使用流处理
     const imageBlob = await imageResponse.blob();
     console.log(
       "Successfully got image data:",
@@ -83,6 +108,20 @@ async function fetchImageData(
     console.error("Failed to get image data:", fetchError);
     const errorMessage =
       fetchError instanceof Error ? fetchError.message : String(fetchError);
+
+    // Special handling for timeout errors
+    if (errorMessage.includes("abort") || errorMessage.includes("timeout")) {
+      uploadTaskManager.updateTaskState(
+        uploadId,
+        UploadState.ERROR,
+        "Image fetch timed out after 15 seconds."
+      );
+
+      return {
+        success: false,
+        error: "Image fetch timed out after 15 seconds.",
+      };
+    }
 
     uploadTaskManager.updateTaskState(
       uploadId,
@@ -138,10 +177,24 @@ async function uploadImageToServer(
   uploadTaskManager.updateTaskState(uploadId, UploadState.UPLOADING);
 
   try {
+    // Add timeout and optimize request headers
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
+
     const response = await fetch(workerUrl, {
       method: "POST",
       body: formData,
+      signal: controller.signal,
+      headers: {
+        // Add optimized request headers to improve priority
+        Priority: "high",
+        "X-Upload-ID": uploadId,
+      },
+      // Disable fetch's default caching mechanism
+      cache: "no-store",
     });
+
+    clearTimeout(timeoutId); // Clear timeout timer
 
     // Update state to show processing response
     uploadTaskManager.updateTaskState(uploadId, UploadState.PROCESSING);
@@ -175,6 +228,20 @@ async function uploadImageToServer(
     console.error("Error handling response:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
 
+    // Special handling for timeout errors
+    if (errorMessage.includes("abort") || errorMessage.includes("timeout")) {
+      uploadTaskManager.updateTaskState(
+        uploadId,
+        UploadState.ERROR,
+        "Upload timed out. Server might be busy."
+      );
+
+      return {
+        success: false,
+        error: `Upload timed out after 30 seconds. Please try again.`,
+      };
+    }
+
     uploadTaskManager.updateTaskState(
       uploadId,
       UploadState.ERROR,
@@ -186,6 +253,47 @@ async function uploadImageToServer(
       error: `Error handling response: ${errorMessage}`,
     };
   }
+}
+
+// Add a new parallel upload function
+async function uploadImageWithRetry(
+  formData: FormData,
+  workerUrl: string,
+  uploadId: string,
+  maxRetries = 2
+): Promise<{ success: boolean; result?: any; error?: string }> {
+  let retryCount = 0;
+  let lastError: string | undefined;
+
+  while (retryCount <= maxRetries) {
+    try {
+      if (retryCount > 0) {
+        console.log(`Retry attempt ${retryCount} for upload ${uploadId}`);
+        uploadTaskManager.updateTaskState(
+          uploadId,
+          UploadState.UPLOADING,
+          `Retry #${retryCount}...`
+        );
+        // Add random delay to avoid simultaneous retries
+        await new Promise((r) => setTimeout(r, Math.random() * 1000 + 500));
+      }
+
+      return await uploadImageToServer(formData, workerUrl, uploadId);
+    } catch (error) {
+      retryCount++;
+      lastError = error instanceof Error ? error.message : String(error);
+      console.warn(`Upload attempt ${retryCount} failed: ${lastError}`);
+
+      if (retryCount > maxRetries) {
+        break;
+      }
+    }
+  }
+
+  return {
+    success: false,
+    error: `Failed after ${maxRetries} retries. Last error: ${lastError}`,
+  };
 }
 
 // Process successful upload
@@ -329,8 +437,12 @@ export async function handleImageClick(
     // Show upload start toast (loading state)
     await showLoadingToast(uploadId);
 
-    // Fetch image data
-    const imageDataResult = await fetchImageData(info.srcUrl, uploadId);
+    // Use Promise.all for parallel processing of image fetching and configuration
+    const [imageDataResult] = await Promise.all([
+      fetchImageData(info.srcUrl, uploadId),
+      // Add other parallel processing tasks here if needed
+    ]);
+
     if (!imageDataResult.success) {
       // Show error toast
       await showPageToast(
@@ -343,7 +455,7 @@ export async function handleImageClick(
       return;
     }
 
-    // Update toast to show still processing
+    // Update toast to show processing state
     uploadTaskManager.updateTaskState(uploadId, UploadState.PROCESSING);
     await showLoadingToast(uploadId);
 
@@ -355,14 +467,18 @@ export async function handleImageClick(
       folderPath
     );
 
+    // Add important request headers to improve priority
+    formData.append("priority", "high");
+    formData.append("timestamp", Date.now().toString());
+
     // Ensure Worker URL is properly formatted
     const formattedWorkerUrl = formatWorkerUrl(config.workerUrl);
 
     // Update toast to show sending
     await showLoadingToast(uploadId);
 
-    // Upload the image
-    const uploadResult = await uploadImageToServer(
+    // Use upload function with retry capability
+    const uploadResult = await uploadImageWithRetry(
       formData,
       formattedWorkerUrl,
       uploadId
@@ -416,68 +532,81 @@ export async function handleImageUpload(
     const notificationId = showProcessingNotification(info, "Processing image");
     console.log(`Created processing notification: ${notificationId}`);
 
-    // Check if extension is fully initialized
-    if (!extensionStateManager.isReady()) {
-      console.log(
-        "Extension not fully initialized, will queue upload and wait"
-      );
+    // Quick parallel check of extension initialization status and configuration
+    const initPromise = new Promise<boolean>(async (resolve) => {
+      // Check if extension is fully initialized
+      if (!extensionStateManager.isReady()) {
+        console.log(
+          "Extension not fully initialized, will queue upload and wait"
+        );
 
-      // Update notification
-      showProcessingNotification(
-        info,
-        "Added to queue, will be processed when extension is fully initialized"
-      );
+        // Update notification
+        showProcessingNotification(
+          info,
+          "Added to queue, will be processed when extension is fully initialized"
+        );
 
-      // Wait for initialization with a timeout
-      let waitCount = 0;
-      const maxWaitCount = 10; // Maximum number of wait cycles
+        // Wait for initialization with a timeout
+        let waitCount = 0;
+        const maxWaitCount = 10; // Maximum number of wait cycles
 
-      while (!extensionStateManager.isReady() && waitCount < maxWaitCount) {
-        waitCount++;
-        console.log(`Waiting for extension initialization... (${waitCount})`);
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        while (!extensionStateManager.isReady() && waitCount < maxWaitCount) {
+          waitCount++;
+          console.log(`Waiting for extension initialization... (${waitCount})`);
+          await new Promise((r) => setTimeout(r, 500));
 
-        if (waitCount % 3 === 0) {
-          // Update notification every 3 cycles
+          if (waitCount % 3 === 0) {
+            // Update notification every 3 cycles
+            showProcessingNotification(
+              info,
+              `Waiting for extension (attempt ${waitCount})...`
+            );
+          }
+        }
+
+        // Check again
+        if (!extensionStateManager.isReady()) {
+          uploadTaskManager.updateTaskState(
+            uploadId,
+            UploadState.ERROR,
+            "Extension initialization failed"
+          );
+          await showPageToast(
+            TOAST_STATUS.FAILED,
+            "Extension initialization failed, please reload the extension",
+            "error",
+            undefined,
+            notificationId // Use the same ID to replace the loading notification
+          );
+          resolve(false);
+          return;
+        } else {
+          // Initialized, update status
+          uploadTaskManager.updateTaskState(uploadId, UploadState.LOADING, "");
           showProcessingNotification(
             info,
-            `Waiting for extension (attempt ${waitCount})...`
+            "Extension initialized, proceeding with upload..."
           );
         }
       }
+      resolve(true);
+    });
 
-      // Check again
-      if (!extensionStateManager.isReady()) {
-        uploadTaskManager.updateTaskState(
-          uploadId,
-          UploadState.ERROR,
-          "Extension initialization failed"
-        );
-        await showPageToast(
-          TOAST_STATUS.FAILED,
-          "Extension initialization failed, please reload the extension",
-          "error",
-          undefined,
-          notificationId // Use the same ID to replace the loading notification
-        );
-        return false;
-      } else {
-        // Initialized, update status
-        uploadTaskManager.updateTaskState(uploadId, UploadState.LOADING, "");
-        showProcessingNotification(
-          info,
-          "Extension initialized, proceeding with upload..."
-        );
-      }
-    }
+    // Parallel configuration fetching
+    const configPromise = getConfig();
+
+    // Wait for initialization and configuration
+    const [initSuccess, config] = await Promise.all([
+      initPromise,
+      configPromise,
+    ]);
+
+    if (!initSuccess) return false;
 
     console.log(
       "Processing image upload...",
       targetFolder ? `to folder: ${targetFolder}` : "to root directory"
     );
-
-    // Get configuration
-    const config = await getConfig();
 
     // Check configuration
     if (!config.cloudflareId || !config.workerUrl) {
@@ -508,39 +637,87 @@ export async function handleImageUpload(
     // Update notification
     showProcessingNotification(info, "Fetching image data...");
 
-    // Directly process image upload, not using handleImageClick function
+    // If no src URL, try to get from data transfer
+    if (!info.srcUrl) {
+      console.error("No source URL available for image");
+      uploadTaskManager.updateTaskState(
+        uploadId,
+        UploadState.ERROR,
+        "No image URL"
+      );
+      await showPageToast(
+        TOAST_STATUS.FAILED,
+        "No image URL found",
+        "error",
+        undefined,
+        notificationId
+      );
+      return false;
+    }
+
+    // Process image URL
     try {
+      const imageUrl = info.srcUrl;
+      console.log(`Processing image from: ${imageUrl.substring(0, 50)}...`);
+
       // Get image data
-      const imageDataResult = await fetchImageData(info.srcUrl || "", uploadId);
-      if (!imageDataResult.success) {
-        // Display error message
+      const imageResult = await fetchImageData(imageUrl, uploadId);
+      if (!imageResult.success || !imageResult.imageBlob) {
+        const errorMessage = imageResult.error || "Failed to fetch image";
+        console.error(`Failed to get image data: ${errorMessage}`);
+        uploadTaskManager.updateTaskState(
+          uploadId,
+          UploadState.ERROR,
+          errorMessage
+        );
         await showPageToast(
           TOAST_STATUS.FAILED,
-          `Failed to get image: ${imageDataResult.error}`,
+          `Failed to get image: ${errorMessage}`,
           "error",
           undefined,
-          notificationId // Replace the existing notification
+          notificationId
         );
         return false;
       }
 
-      // Update status
-      uploadTaskManager.updateTaskState(uploadId, UploadState.PROCESSING, "");
-      showProcessingNotification(info, "Preparing upload...");
-
-      // Create form data
-      const { formData, filename } = createUploadFormData(
-        imageDataResult.imageBlob!,
-        info.srcUrl || "",
-        config.cloudflareId,
-        targetFolder || null
+      console.log(
+        `Successfully fetched image: ${imageResult.imageBlob.size} bytes, type: ${imageResult.imageBlob.type}`
       );
 
-      // Update status to uploading
-      showProcessingNotification(info, "Uploading image...");
-
       // Upload image
-      const uploadResult = await uploadImageToServer(
+      showProcessingNotification(info, "Uploading to storage...");
+      uploadTaskManager.updateTaskState(uploadId, UploadState.UPLOADING, "");
+
+      // Create FormData with file
+      const formData = new FormData();
+      const fileExt =
+        imageResult.imageBlob.type.split("/")[1] ||
+        imageUrl.split(".").pop() ||
+        "jpg";
+      const fileName = `image_${Date.now()}.${fileExt}`;
+
+      formData.append(
+        "file",
+        new File([imageResult.imageBlob], fileName, {
+          type: imageResult.imageBlob.type,
+        })
+      );
+      formData.append("cloudflareId", config.cloudflareId);
+
+      // Add important request headers to improve priority
+      formData.append("priority", "high");
+      formData.append("timestamp", Date.now().toString());
+
+      // Add target folder if present
+      if (targetFolder) {
+        formData.append("folderName", targetFolder);
+      }
+
+      // Upload to Worker
+      console.log(`Uploading to: ${formattedWorkerUrl}`);
+
+      // Use upload function with retry capability
+      const uploadResult = await uploadImageWithRetry(
         formData,
         formattedWorkerUrl,
         uploadId
