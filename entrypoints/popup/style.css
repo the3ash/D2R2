@@ -70,7 +70,7 @@ body {
 .app-title {
   line-height: 32px;
   font-size: 32px;
-  letter-spacing: -6px;
+  letter-spacing: -7px;
   color: var(--color-text-primary);
 }
 

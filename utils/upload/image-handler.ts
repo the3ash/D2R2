@@ -921,30 +921,15 @@ async function handleSuccessfulUpload(
   try {
     console.log(`Successfully uploaded image: ${result.url}`);
 
-    // Try to copy URL to clipboard if available
-    if (result.url && navigator.clipboard) {
-      try {
-        await navigator.clipboard.writeText(result.url);
-        console.log("URL copied to clipboard");
-      } catch (clipboardError) {
-        console.warn("Could not copy URL to clipboard:", clipboardError);
-      }
-    }
-
     // Update task state to success
-    uploadTaskManager.updateTaskState(
-      uploadId,
-      UploadState.SUCCESS,
-      "" // Third parameter is required, passing empty string
-    );
+    uploadTaskManager.updateTaskState(uploadId, UploadState.SUCCESS, "");
 
-    // Show success notification
     await showPageToast(
       TOAST_STATUS.DONE,
       "Upload complete!",
       "success",
       result.url,
-      notificationId // Use the same ID to replace loading notification
+      notificationId
     );
 
     console.log(`Upload task ${uploadId} completed successfully`);
@@ -985,7 +970,7 @@ async function handleFailedUpload(
     uploadTaskManager.updateTaskState(
       uploadId,
       UploadState.ERROR,
-      displayMessage // Third parameter is required
+      displayMessage
     );
 
     // Show failure notification
@@ -994,7 +979,7 @@ async function handleFailedUpload(
       displayMessage,
       "error",
       undefined,
-      notificationId // Use the same ID to replace loading notification
+      notificationId
     );
 
     console.log(`Upload task ${uploadId} failed: ${displayMessage}`);

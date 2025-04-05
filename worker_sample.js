@@ -8,7 +8,7 @@
 
 // Allowed origin domains for enhanced security
 const ALLOWED_ORIGINS = [
-  "chrome-extension://gbhpfpkimkalpnhpfaeialjaddhmpmof", // Your extension ID
+  "chrome-extension://xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", // Your extension ID
   // Add more extension IDs (development/production)
   // Consider adding local test domains
 ];
