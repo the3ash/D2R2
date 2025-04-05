@@ -724,7 +724,7 @@ export default defineBackground(() => {
       const config = await getConfig();
       const folders = parseFolderPath(config.folderPath);
 
-      // Based on folder path count, decide menu structure
+      // Based on folder path count and hideRoot setting, decide menu structure
       if (!folders || folders.length === 0) {
         // Case 1: No folder path, create single menu item
         chrome.contextMenus.create(
@@ -736,8 +736,20 @@ export default defineBackground(() => {
           checkMenuCreation
         );
         console.log("Single menu item created: Drop to R2");
+      } else if (folders.length === 1 && config.hideRoot) {
+        // Case 2: Single folder path with hideRoot enabled, create single menu item with folder name
+        const folderName = folders[0];
+        chrome.contextMenus.create(
+          {
+            id: `${FOLDER_PREFIX}0`,
+            title: `Drop to R2 / ${folderName}`,
+            contexts: ["image"],
+          },
+          checkMenuCreation
+        );
+        console.log(`Single menu item created: Drop to R2/${folderName}`);
       } else {
-        // Case 2 and 3: Folder paths exist, create parent menu and submenus
+        // Case 3: Multiple folder paths or hideRoot disabled, create parent menu and submenus
         // Create parent menu
         chrome.contextMenus.create(
           {
@@ -767,7 +779,7 @@ export default defineBackground(() => {
             {
               id: `${FOLDER_PREFIX}${index}`,
               parentId: PARENT_MENU_ID,
-              title: `  /${folder}`,
+              title: ` / ${folder}`,
               contexts: ["image"],
             },
             checkMenuCreation
@@ -776,7 +788,7 @@ export default defineBackground(() => {
 
         console.log(
           `Menu created: Parent menu "D2R2" contains ${
-            folders.length + 1
+            folders.length + (config.hideRoot ? 0 : 1)
           } subitems`
         );
       }
@@ -849,6 +861,9 @@ export default defineBackground(() => {
     } else if (info.menuItemId === ROOT_FOLDER_ID) {
       // Upload to root directory
       handleImageUpload(info, null);
+    } else if (info.menuItemId === PARENT_MENU_ID) {
+      // This is the parent menu, which shouldn't be clickable
+      console.log("Parent menu clicked, no action taken");
     }
   }
 
