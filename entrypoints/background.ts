@@ -16,6 +16,42 @@ import { handleError } from "../utils/helpers";
 // Setup enhanced logging first
 setupEnhancedLogging();
 
+// Track active uploads
+const activeUploads = new Map<string, { timestamp: number; tabId: number }>();
+
+// Send heartbeats to active tabs with uploads
+const sendHeartbeats = async () => {
+  const now = Date.now();
+  // Copy activeUploads to avoid iterator invalidation during deletion
+  const uploads = [...activeUploads.entries()];
+
+  for (const [toastId, { timestamp, tabId }] of uploads) {
+    // If upload is more than 30 seconds old, consider it lost
+    if (now - timestamp > 30000) {
+      console.log(`Upload ${toastId} timed out after 30 seconds`);
+      activeUploads.delete(toastId);
+      continue;
+    }
+
+    try {
+      // Send heartbeat to tab
+      await chrome.tabs.sendMessage(tabId, {
+        action: "heartbeat",
+        toastId,
+      });
+    } catch (error) {
+      console.warn(`Failed to send heartbeat to tab ${tabId}:`, error);
+      // If tab doesn't exist anymore, remove the upload
+      if (
+        (error as any)?.message?.includes("receiving end does not exist") ||
+        (error as any)?.message?.includes("tab was closed")
+      ) {
+        activeUploads.delete(toastId);
+      }
+    }
+  }
+};
+
 export default defineBackground(() => {
   console.log("D2R2 extension initializing...");
 
@@ -33,20 +69,37 @@ export default defineBackground(() => {
         const elapsedTime = Date.now() - pendingClick.timestamp;
         console.log(`Processing click from ${elapsedTime}ms ago`);
 
+        // Get active tab
+        const { info, tab } = pendingClick;
+        const tabId = tab?.id;
+
+        // Generate toast ID
+        const toastId = `upload_queue_${Date.now()}`;
+
+        // Register this as an active upload
+        if (tabId) {
+          activeUploads.set(toastId, {
+            timestamp: Date.now(),
+            tabId,
+          });
+        }
+
         // Show toast for pending click being processed
         showPageToast(
           TOAST_STATUS.DROPPING,
           "Dropping",
           "loading",
           undefined,
-          `upload_queue_${Date.now()}`
+          toastId
         );
 
-        const { info, tab } = pendingClick;
         handleMenuClick(info, tab);
       }
     }
   }, 1000);
+
+  // Run heartbeat process every 3 seconds
+  setInterval(sendHeartbeats, 3000);
 
   // Add tab update listener
   chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
@@ -212,6 +265,32 @@ export default defineBackground(() => {
           sendResponse({ success: false, error: errorMessage });
         });
 
+      return true;
+    } else if (message.action === "checkUploadStatus") {
+      // Handle upload status check
+      const { toastId } = message;
+      if (!toastId) {
+        sendResponse({ status: "inactive" });
+        return true;
+      }
+
+      // Check if upload is still active
+      if (activeUploads.has(toastId)) {
+        sendResponse({ status: "active" });
+      } else {
+        sendResponse({ status: "inactive" });
+      }
+      return true;
+    } else if (
+      message.action === "uploadSuccess" ||
+      message.action === "uploadFailed"
+    ) {
+      // Mark upload as completed
+      const { toastId } = message;
+      if (toastId && activeUploads.has(toastId)) {
+        activeUploads.delete(toastId);
+      }
+      sendResponse({ success: true });
       return true;
     }
   });

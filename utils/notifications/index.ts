@@ -649,6 +649,43 @@ export async function showPageToast(
     }
   }
 
+  // For successful or failed notifications with a toastId, notify background
+  if (
+    toastId &&
+    (type === "success" ||
+      type === TOAST_STATUS.DONE ||
+      type === "error" ||
+      type === TOAST_STATUS.FAILED)
+  ) {
+    try {
+      // Notify background script that upload has completed or failed
+      chrome.runtime.sendMessage(
+        {
+          action:
+            type === "success" || type === TOAST_STATUS.DONE
+              ? "uploadSuccess"
+              : "uploadFailed",
+          toastId,
+        },
+        // Add callback function to handle errors
+        (response) => {
+          const error = chrome.runtime.lastError;
+          if (error) {
+            console.warn(
+              "Expected error when notifying background (can be ignored):",
+              error.message
+            );
+          }
+        }
+      );
+    } catch (error) {
+      console.warn(
+        "Failed to notify background about upload completion (can be ignored):",
+        error
+      );
+    }
+  }
+
   return showNotification(title, message, type, {
     imageUrl,
     id: toastId,

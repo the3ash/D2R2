@@ -13,6 +13,7 @@ import { processMenuClick } from "../upload";
 import { quickInitialize, performInitialization } from "./initialization";
 import { handleError } from "../helpers";
 import { updateContextMenu } from "../menu";
+import { getConfig } from "../storage";
 
 // Initial menu click handler - queues clicks if not ready
 export async function handleMenuClick(
@@ -27,11 +28,36 @@ export async function handleMenuClick(
       tabId: tab?.id,
     });
 
-    // Always immediately show a processing toast
+    // Create task ID for this operation
     const uploadId = uploadTaskManager.createTask(info, tab);
     console.log(`Created task ID: ${uploadId}`);
 
-    // Show processing notification
+    // Check configuration first before showing any processing toast
+    const config = await getConfig();
+    if (!config.cloudflareId || !config.workerUrl) {
+      console.error(
+        "Configuration error: Missing required Cloudflare ID or Worker URL"
+      );
+
+      // Show error immediately
+      await showPageToast(
+        "Complete settings in popup",
+        "",
+        "error",
+        undefined,
+        uploadId
+      );
+
+      // Open options page
+      chrome.runtime.openOptionsPage();
+
+      console.log(
+        "Aborted menu click processing due to incomplete configuration"
+      );
+      return;
+    }
+
+    // Only show processing notification if config is valid
     await showPageToast(
       TOAST_STATUS.DROPPING,
       "Processing image upload...",
@@ -51,7 +77,7 @@ export async function handleMenuClick(
     await quickInitialize();
     console.log("Force initialization completed");
 
-    // 直接处理点击 - 同步等待完成
+    // Process click directly - wait for completion synchronously
     try {
       console.log("Processing menu click for task:", uploadId);
       await processMenuClick(info, tab);

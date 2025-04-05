@@ -91,6 +91,9 @@ export default defineContentScript({
     // Store current active upload toast
     let currentUploadToast: HTMLElement | null = null;
     let currentUploadTimeoutId: number | null = null;
+    let currentUploadLastActivity: number | null = null;
+    let heartbeatIntervalId: number | null = null;
+    let toastId: string | null = null;
 
     // Helper function to create toast element
     const createToastElement = (type: string, toastId: string) => {
@@ -129,7 +132,7 @@ export default defineContentScript({
     // Helper function to remove toast
     const removeToast = (toast: HTMLElement) => {
       // First move up and fade out
-      toast.style.transition = "opacity 0.2s, transform 0.2s";
+      toast.style.transition = "opacity 0.2s ease-in, transform 0.2s ease-in";
       toast.style.opacity = "0";
       toast.style.transform = "translateY(-20px)";
 
@@ -138,6 +141,13 @@ export default defineContentScript({
         if (toast === currentUploadToast) {
           currentUploadToast = null;
           currentUploadTimeoutId = null;
+          currentUploadLastActivity = null;
+
+          // Clear heartbeat interval if it exists
+          if (heartbeatIntervalId !== null) {
+            clearInterval(heartbeatIntervalId);
+            heartbeatIntervalId = null;
+          }
         }
       }, 200);
     };
@@ -150,15 +160,57 @@ export default defineContentScript({
       imageUrl?: string,
       toastId?: string
     ) => {
-      // Map title based on type
+      // Map title based on type, but if title is provided and not empty, use it directly
       const displayTitle =
-        type === "loading"
+        title && title !== "Failed" && title !== "Done" && title !== "Dropping"
+          ? title
+          : type === "loading"
           ? "Dropping"
           : type === "success"
           ? "Done"
           : type === "error"
           ? "Failed"
           : title;
+
+      // If showing an error or success toast, first remove any existing loading toast
+      // with the same ID to prevent duplicate toasts
+      if ((type === "error" || type === "success") && toastId) {
+        const existingToasts = document.querySelectorAll(".d2r2-toast");
+        let existingToastFound = false;
+
+        existingToasts.forEach((existingToast: Element) => {
+          const htmlToast = existingToast as HTMLElement;
+          if (
+            htmlToast.dataset.toastId === toastId &&
+            htmlToast.classList.contains("d2r2-toast-loading")
+          ) {
+            // Instead of removing, update the existing toast
+            htmlToast.className = `d2r2-toast d2r2-toast-${type}`;
+            updateToastContent(htmlToast, displayTitle, message);
+
+            // Update activity timestamp
+            currentUploadLastActivity = Date.now();
+
+            // Set timeout for auto-removal
+            if (currentUploadTimeoutId !== null) {
+              clearTimeout(currentUploadTimeoutId);
+            }
+
+            // Set timeout for auto-removal (1 second)
+            currentUploadTimeoutId = window.setTimeout(
+              () => removeToast(htmlToast),
+              1000
+            );
+
+            existingToastFound = true;
+          }
+        });
+
+        // If we updated an existing toast, return it
+        if (existingToastFound) {
+          return;
+        }
+      }
 
       // If toastId is provided and matches current upload toast ID, update existing toast
       if (
@@ -175,17 +227,20 @@ export default defineContentScript({
         currentUploadToast.className = `d2r2-toast d2r2-toast-${type}`;
         updateToastContent(currentUploadToast, displayTitle, message);
 
-        // If not in loading state, set timer to remove
+        // Update activity timestamp for heartbeat check
+        currentUploadLastActivity = Date.now();
+
+        // For non-loading toasts, use a timeout to auto-remove
         if (type !== "loading") {
           currentUploadTimeoutId = window.setTimeout(
             () => removeToast(currentUploadToast!),
             1000
           );
-        } else {
-          // If in loading state, ensure it's displayed
-          currentUploadToast.style.opacity = "1";
-          currentUploadToast.style.transform = "translateY(0)";
         }
+
+        // Ensure toast is visible
+        currentUploadToast.style.opacity = "1";
+        currentUploadToast.style.transform = "translateY(0)";
 
         return currentUploadToast;
       }
@@ -203,6 +258,29 @@ export default defineContentScript({
           }
         }
         currentUploadToast = toast;
+        currentUploadLastActivity = Date.now();
+
+        // Set up heartbeat check for loading toast (every 5 seconds)
+        if (heartbeatIntervalId !== null) {
+          clearInterval(heartbeatIntervalId);
+        }
+
+        heartbeatIntervalId = window.setInterval(() => {
+          if (
+            currentUploadLastActivity &&
+            Date.now() - currentUploadLastActivity > 10000
+          ) {
+            // If no activity for 10 seconds, assume the upload is lost and remove toast
+            console.log(
+              "No upload activity detected for 10 seconds, removing toast"
+            );
+            if (currentUploadToast) {
+              removeToast(currentUploadToast);
+            }
+            clearInterval(heartbeatIntervalId!);
+            heartbeatIntervalId = null;
+          }
+        }, 5000);
       }
 
       toast.innerHTML = `
@@ -226,15 +304,18 @@ export default defineContentScript({
         toast.offsetHeight;
 
         // Set transition
-        toast.style.transition = "opacity 0.3s, transform 0.3s";
+        toast.style.transition =
+          "opacity 0.2s ease-out, transform 0.2s ease-out";
 
         // Move to target position
         toast.style.opacity = "1";
         toast.style.transform = "translateY(0)";
       });
 
+      // Only set auto-close timeout for non-loading toasts
       if (type !== "loading") {
         const timeoutId = window.setTimeout(() => removeToast(toast), 1000);
+
         if (toast === currentUploadToast) {
           currentUploadTimeoutId = timeoutId;
         }
@@ -242,6 +323,17 @@ export default defineContentScript({
 
       return toast;
     };
+
+    // Monitor page visibility to check if user has switched away from page
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        // Page is now visible again, if we have an active upload toast, remove it
+        // This prevents stale toasts when returning to the page
+        if (currentUploadToast) {
+          removeToast(currentUploadToast);
+        }
+      }
+    });
 
     // Listen for messages from background
     chrome.runtime.onMessage.addListener(
@@ -253,12 +345,52 @@ export default defineContentScript({
           if (!data) {
             console.error("Missing toast data");
             sendResponse({ success: false, error: "Missing toast data" });
-            return;
+            return true;
           }
-          const { title, message: msg, type, imageUrl, toastId } = data;
-          showToast(title, msg, type, imageUrl, toastId);
+          const {
+            title,
+            message: msg,
+            type,
+            imageUrl,
+            toastId: msgToastId,
+          } = data;
+
+          // Store toastId for visibility change handling
+          if (type === "loading" && msgToastId) {
+            toastId = msgToastId;
+          } else if (type !== "loading" && toastId === msgToastId) {
+            // Clear toastId when the upload completes
+            toastId = null;
+          }
+
+          showToast(title, msg, type, imageUrl, msgToastId);
           sendResponse({ success: true });
+          return true;
+        } else if (message.action === "updateUploadStatus") {
+          // Update the last activity timestamp when we receive upload status updates
+          currentUploadLastActivity = Date.now();
+          sendResponse({ success: true });
+          return true;
+        } else if (message.action === "heartbeat") {
+          // Handle heartbeat messages to maintain upload toast
+          if (
+            message.toastId &&
+            message.toastId === toastId &&
+            currentUploadToast
+          ) {
+            currentUploadLastActivity = Date.now();
+          }
+          sendResponse({ success: true });
+          return true;
+        } else if (message.action === "ping") {
+          // Simple ping response to verify content script is loaded
+          console.log("Received ping from background script");
+          sendResponse({ success: true, loaded: true });
+          return true;
         }
+
+        // Return true for any unhandled messages to indicate async response
+        return true;
       }
     );
   },

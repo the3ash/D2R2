@@ -743,21 +743,8 @@ export async function processMenuClick(
   const taskId = uploadTaskManager.createTask(info, tab);
   console.log(`Created task ${taskId} for menu click processing`);
 
-  // Immediately show processing status
-  try {
-    await showPageToast(
-      TOAST_STATUS.DROPPING,
-      "Processing request...",
-      "loading",
-      undefined,
-      taskId
-    );
-  } catch (toastError) {
-    console.error(
-      `Failed to show initial toast for task ${taskId}:`,
-      toastError
-    );
-  }
+  // Initial toast already shown in handleMenuClick, no need to show it again here
+  // This avoids duplicate toast notifications
 
   try {
     // Log menu click details
