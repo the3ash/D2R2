@@ -231,7 +231,7 @@ export default function App() {
 
           <div className="success-message font-body">
             <span className="dot"></span>
-            Settings are in effect. Right-click the image to upload it to the R2
+            Settings are in effect. Right-click the image to drop it to the R2
             bucket.
           </div>
         </div>
