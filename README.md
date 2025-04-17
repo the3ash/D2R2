@@ -1,11 +1,14 @@
 <div align="center">
-  <img src="public/screenshot.png" alt="screenshot">
+  <img src="public/icon/128.png" alt="icon">
+  <h1>D2R2</h1>
+  <b>Drop images to Cloudflare R2</b>
+  <p></p>
+  <p>A Chrome extension for uploading images from web pages to a Cloudflare R2 bucket via right-click</p>
 </div>
 &nbsp;
 
-# D2R2 - Drop images to Cloudflare R2
-
-A Chrome extension for uploading images from web pages to a Cloudflare R2 bucket via right-click.
+  <img src="public/screenshot.png" alt="screenshot">
+&nbsp;
 
 ## Installation
 
@@ -14,12 +17,9 @@ A Chrome extension for uploading images from web pages to a Cloudflare R2 bucket
 3. Run `pnpm install` to install dependencies
 4. Run `pnpm dev` to run in development mode
 5. Run `pnpm build` to build for production
-
-## Chrome Extension Loading Instructions
-
-1. After building the extension, open Chrome browser and visit `chrome://extensions`
-2. Enable "Developer mode" in the top right corner
-3. Click "Load unpacked extension" and select the `.output/chrome-mv3` folder in the project directory
+6. After building the extension, open Chrome browser and visit `chrome://extensions`
+7. Enable "Developer mode" in the top right corner
+8. Click "Load unpacked extension" and select the `.output/chrome-mv3` folder in the project directory
 
 ## Cloudflare Worker Deployment
 
