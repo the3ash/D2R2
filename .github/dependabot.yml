@@ -1,0 +1,30 @@
+version: 2
+updates:
+  # Enable npm dependency updates
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # Allow automatic merging of non-major version updates
+    open-pull-requests-limit: 10
+    allow:
+      - dependency-type: "all"
+    assignees:
+      - "3ash"
+    commit-message:
+      prefix: "deps"
+      prefix-development: "dev"
+      include: "scope"
+    versioning-strategy: auto
+
+  # Enable GitHub Actions updates
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    assignees:
+      - "3ash"
+    commit-message:
+      prefix: "github-actions"
+      include: "scope"
