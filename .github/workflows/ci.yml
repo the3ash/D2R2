@@ -25,18 +25,18 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@latest
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@latest
+        uses: actions/setup-node@v4
         with:
           node-version: "latest"
           cache: "pnpm"
 
       - name: Install pnpm
-        uses: pnpm/action-setup@latest
+        uses: pnpm/action-setup@v3
         with:
-          version: latest
+          version: 8
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -69,7 +69,7 @@ jobs:
         run: pnpm run zip
 
       - name: Upload Chrome build artifacts
-        uses: actions/upload-artifact@latest
+        uses: actions/upload-artifact@v4
         with:
           name: chrome-extension
           path: .output/*-chrome.zip
@@ -89,19 +89,19 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@latest
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Auto approve Dependabot PRs
         if: github.actor == 'dependabot[bot]'
-        uses: hmarr/auto-approve-action@latest
+        uses: hmarr/auto-approve-action@v3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           pull-request-number: ${{ github.event.pull_request.number }}
 
       - name: Wait for all checks to complete
-        uses: fountainhead/action-wait-for-check@latest
+        uses: fountainhead/action-wait-for-check@v1.2.0
         id: wait-for-checks
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -112,7 +112,7 @@ jobs:
 
       - name: Auto merge
         if: steps.wait-for-checks.outputs.conclusion == 'success'
-        uses: pascalgn/merge-action@latest
+        uses: pascalgn/merge-action@v0.15.6
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           merge_method: squash
