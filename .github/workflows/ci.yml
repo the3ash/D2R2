@@ -112,7 +112,7 @@ jobs:
 
       - name: Auto merge
         if: steps.wait-for-checks.outputs.conclusion == 'success'
-        uses: pascalgn/merge-action@v0.15.6
+        uses: pascalgn/merge-action@v0.15.3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           merge_method: squash
