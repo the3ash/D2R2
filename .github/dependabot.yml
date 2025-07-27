@@ -1,47 +1,30 @@
 version: 2
 updates:
-  # Enable version updates for npm
+  # Enable npm dependency updates
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
-      day: "monday"
-      time: "09:00"
+    # Allow automatic merging of non-major version updates
     open-pull-requests-limit: 10
-    reviewers:
-      - "@me"
+    allow:
+      - dependency-type: "all"
     assignees:
-      - "@me"
+      - "the3ash"
     commit-message:
-      prefix: "chore"
-      prefix-development: "chore"
+      prefix: "deps"
+      prefix-development: "dev"
       include: "scope"
-    labels:
-      - "dependencies"
-      - "automerge"
-    # Group all minor and patch updates together
-    groups:
-      development-dependencies:
-        dependency-type: "development"
-        update-types:
-          - "minor"
-          - "patch"
-      production-dependencies:
-        dependency-type: "production"
-        update-types:
-          - "minor"
-          - "patch"
+    versioning-strategy: auto
 
-  # Enable version updates for GitHub Actions
+  # Enable GitHub Actions updates
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-      day: "monday"
-      time: "09:00"
+    open-pull-requests-limit: 10
+    assignees:
+      - "the3ash"
     commit-message:
-      prefix: "ci"
+      prefix: "github-actions"
       include: "scope"
-    labels:
-      - "github-actions"
-      - "automerge"
