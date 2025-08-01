@@ -81,7 +81,13 @@ This extension uses the **Worker-bound R2 bucket** pattern:
 
 6. Click "Quick edit" button and paste the Worker code provided in this project
 7. Update the `ALLOWED_ORIGINS` array in `wxt.config.ts` with your extension ID (optional)
-8. Click "Save and deploy"
+8. Optional: Configure Image Compression (if needed):
+   - In the Worker code, locate the `IMAGE_COMPRESSION` configuration section
+   - Set `enabled: true` to enable image compression
+   - Adjust `quality` value (1-100, higher = better quality, default: 60)
+   - Compression supports JPEG and PNG formats only
+   - Note: Compression may increase upload time as it requires upload → read back → compress → overwrite process
+9. Click "Save and deploy"
 
 #### Method 2: Using Wrangler CLI
 
