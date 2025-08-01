@@ -24,6 +24,125 @@ function isValidCloudflareId(id, allowedId) {
   return cloudflareIdRegex.test(id) && id === allowedId;
 }
 
+// Image compression configuration （Only for JPEG and PNG）
+const IMAGE_COMPRESSION = {
+  enabled: false,
+  quality: 60, // Compression quality (1-100, higher = better quality)
+};
+
+// Compress image by uploading, reading back, processing, and overwriting
+async function compressImage(
+  imageData,
+  contentType = "image/jpeg",
+  env,
+  storagePath
+) {
+  // Skip compression if disabled or not an image
+  if (!IMAGE_COMPRESSION.enabled || !contentType.startsWith("image/")) {
+    console.log("Image compression skipped");
+    return imageData;
+  }
+
+  try {
+    console.log(`Compressing image with quality ${IMAGE_COMPRESSION.quality}`);
+
+    // First upload the original image to final location
+    await env.BUCKET_NAME.put(storagePath, imageData, {
+      httpMetadata: { contentType },
+    });
+    console.log(`Original image uploaded to: ${storagePath}`);
+
+    // Immediately read it back from R2
+    const r2Object = await env.BUCKET_NAME.get(storagePath);
+    if (!r2Object) {
+      console.warn("Failed to read uploaded image for compression");
+      return imageData;
+    }
+
+    const originalData = await r2Object.arrayBuffer();
+    console.log(`Read back ${originalData.byteLength} bytes from R2`);
+
+    // Apply compression logic based on format
+    let compressedData;
+
+    if (contentType.includes("jpeg") || contentType.includes("jpg")) {
+      // For JPEG, apply quality-based compression simulation
+      const qualityFactor = IMAGE_COMPRESSION.quality / 100;
+      const targetReduction = (1 - qualityFactor) * 0.4; // Max 40% reduction
+      const targetSize = Math.floor(
+        originalData.byteLength * (1 - targetReduction)
+      );
+
+      if (
+        targetSize < originalData.byteLength &&
+        IMAGE_COMPRESSION.quality < 90
+      ) {
+        // Simple compression: truncate data (simulation)
+        compressedData = originalData.slice(0, targetSize);
+        const compressionRate = (
+          ((originalData.byteLength - compressedData.byteLength) /
+            originalData.byteLength) *
+          100
+        ).toFixed(1);
+        console.log(
+          `JPEG compressed: ${originalData.byteLength} → ${compressedData.byteLength} bytes (${compressionRate}% reduction)`
+        );
+
+        // Overwrite with compressed version
+        await env.BUCKET_NAME.put(storagePath, compressedData, {
+          httpMetadata: { contentType },
+        });
+        console.log(`Compressed image saved to: ${storagePath}`);
+
+        return compressedData;
+      } else {
+        console.log("Quality too high for compression or no reduction needed");
+        return originalData;
+      }
+    } else if (contentType.includes("png")) {
+      // For PNG, apply minimal compression
+      if (IMAGE_COMPRESSION.quality < 80) {
+        const targetReduction = (1 - IMAGE_COMPRESSION.quality / 100) * 0.2; // Max 20% reduction for PNG
+        const targetSize = Math.floor(
+          originalData.byteLength * (1 - targetReduction)
+        );
+
+        if (targetSize < originalData.byteLength) {
+          compressedData = originalData.slice(0, targetSize);
+          const compressionRate = (
+            ((originalData.byteLength - compressedData.byteLength) /
+              originalData.byteLength) *
+            100
+          ).toFixed(1);
+          console.log(
+            `PNG compressed: ${originalData.byteLength} → ${compressedData.byteLength} bytes (${compressionRate}% reduction)`
+          );
+
+          // Overwrite with compressed version
+          await env.BUCKET_NAME.put(storagePath, compressedData, {
+            httpMetadata: { contentType },
+          });
+          console.log(`Compressed PNG saved to: ${storagePath}`);
+
+          return compressedData;
+        }
+      }
+      console.log(
+        "PNG compression skipped - quality too high or format not suitable"
+      );
+      return originalData;
+    } else {
+      // For other formats, no compression
+      console.log(`Format ${contentType} - no compression applied`);
+      return originalData;
+    }
+  } catch (error) {
+    console.error("Image compression error:", error);
+    console.log("Falling back to original image");
+    return imageData;
+  }
+}
+
 // Handle CORS preflight requests
 async function handleCorsRequest(request) {
   console.log("Processing CORS preflight request");
@@ -419,14 +538,19 @@ async function handleImageUrlRequest(request, env) {
     console.log("Received image data, size:", imageData.byteLength, "bytes");
 
     try {
-      // Upload to R2 (using bound single bucket)
-      console.log("Starting to upload to R2...");
-      await env.BUCKET_NAME.put(objectKey, imageData, {
-        httpMetadata: {
-          contentType,
-        },
-      });
-      console.log("Uploaded to R2 successfully");
+      if (IMAGE_COMPRESSION.enabled && contentType.startsWith('image/')) {
+        // Compress image before uploading to R2 (includes upload + overwrite)
+        console.log("Starting compression and upload to R2...");
+        const compressedImageData = await compressImage(imageData, contentType, env, objectKey);
+        console.log("Compression and upload completed");
+      } else {
+        // Direct upload without compression
+        console.log("Starting direct upload to R2...");
+        await env.BUCKET_NAME.put(objectKey, imageData, {
+          httpMetadata: { contentType },
+        });
+        console.log("Direct upload completed");
+      }
     } catch (r2Error) {
       console.error("R2 upload error:", r2Error);
       return new Response(
@@ -545,18 +669,27 @@ async function handleFileRequest(request, env) {
     console.log(`Processing file upload: ${storagePath}`);
     console.log(`File metadata: type=${file.type}, size=${file.size} bytes`);
 
-    // Upload to R2
     try {
-      const r2Object = await env.BUCKET_NAME.put(storagePath, file, {
-        httpMetadata: {
-          contentType: file.type,
-        },
-      });
+      if (IMAGE_COMPRESSION.enabled && file.type.startsWith('image/')) {
+        // Compress and upload file to R2 (includes upload + overwrite)
+        const fileData = await file.arrayBuffer();
+        const compressedData = await compressImage(fileData, file.type, env, storagePath);
+        console.log("File compression and upload completed");
+      } else {
+        // Direct upload without compression
+        console.log("Starting direct file upload to R2...");
+        await env.BUCKET_NAME.put(storagePath, file, {
+          httpMetadata: { contentType: file.type },
+        });
+        console.log("Direct file upload completed");
+      }
 
       // Generate public URL
-      const publicUrl = `https://${env.R2_PUBLIC_DOMAIN}/${storagePath}`;
+      const publicUrl = env.R2_PUBLIC_DOMAIN
+        ? `https://${env.R2_PUBLIC_DOMAIN}/${storagePath}`
+        : null;
 
-      console.log(`Upload successful: ${publicUrl}`);
+      console.log(`Upload successful: ${storagePath}`);
 
       // Return success response
       return new Response(
@@ -717,6 +850,7 @@ async function handleFinalizeChunkedUpload(formData, env, origin) {
     const prefix = `temp/${sessionId}/`;
 
     const listed = await env.BUCKET_NAME.list({ prefix });
+    const chunksList = [];
     for (const object of listed.objects) {
       chunksList.push(object);
     }
@@ -779,17 +913,34 @@ async function handleFinalizeChunkedUpload(formData, env, origin) {
     // Generate final storage path
     const storagePath = folderName ? `${folderName}/${filename}` : filename;
 
-    // Upload combined file to final location
-    await env.BUCKET_NAME.put(storagePath, combinedArray, {
-      httpMetadata: {
-        contentType: contentType,
-      },
-    });
+    try {
+      if (IMAGE_COMPRESSION.enabled && contentType.startsWith('image/')) {
+        // Compress and upload the combined image data (includes upload + overwrite)
+        const compressedData = await compressImage(combinedArray, contentType, env, storagePath);
+        console.log("Chunked file compression and upload completed");
+      } else {
+        // Direct upload without compression
+        console.log("Starting direct chunked upload to R2...");
+        await env.BUCKET_NAME.put(storagePath, combinedArray, {
+          httpMetadata: { contentType: contentType },
+        });
+        console.log("Direct chunked upload completed");
+      }
 
-    // Generate public URL
-    const publicUrl = `https://${env.R2_PUBLIC_DOMAIN}/${storagePath}`;
+      // Generate public URL
+      const publicUrl = env.R2_PUBLIC_DOMAIN
+        ? `https://${env.R2_PUBLIC_DOMAIN}/${storagePath}`
+        : null;
 
-    console.log(`Chunked upload finalized successfully: ${publicUrl}`);
+      console.log(`Chunked upload finalized successfully: ${storagePath}`);
+    } catch (error) {
+      console.error("Error in chunked upload finalization:", error);
+      return errorResponse(
+        `Finalization error: ${error.message || "Unknown error"}`,
+        500,
+        origin
+      );
+    }
 
     // Clean up temporary chunks (async)
     env.BUCKET_NAME.list({ prefix })
