@@ -1,14 +1,12 @@
-<div align="center">
-  <img src="public/icon/128.png" alt="icon">
-  <h1>D2R2</h1>
-  <b>Drop images to Cloudflare R2</b>
-  <p></p>
-  <p>A Chrome extension for uploading images from web pages to a Cloudflare R2 bucket via right-click</p>
-</div>
-&nbsp;
+![screenshot](public/icon.png)
 
-  <img src="public/screenshot.png" alt="screenshot">
-&nbsp;
+# D2R2
+
+Drop images to Cloudflare R2
+
+A Chrome extension for uploading images from web pages to a Cloudflare R2 bucket via right-click
+
+![screenshot](public/screenshot.png)
 
 ## Installation
 
@@ -52,8 +50,6 @@ This extension uses the **Worker-bound R2 bucket** pattern:
 
 ### 3. Create and Configure Worker
 
-#### Method 1: Using Cloudflare Dashboard
-
 1. Select "Workers & Pages" from the Cloudflare Dashboard sidebar
 2. Click "Create application" and select "Worker"
 3. Name your Worker and click "Create Worker"
@@ -88,58 +84,6 @@ This extension uses the **Worker-bound R2 bucket** pattern:
    - Compression supports JPEG and PNG formats only
    - Note: Compression may increase upload time as it requires upload → read back → compress → overwrite process
 9. Click "Save and deploy"
-
-#### Method 2: Using Wrangler CLI
-
-1. Install Wrangler CLI: `npm install -g wrangler`
-2. Log in to Cloudflare account: `wrangler login`
-3. Create Worker project:
-
-   ```bash
-   mkdir d2r2-worker && cd d2r2-worker
-   wrangler init
-   ```
-
-4. Create and configure `wrangler.toml`:
-
-   ```toml
-   name = "d2r2-worker"
-   main = "src/index.js"
-   compatibility_date = "2025-04-0"
-
-   # R2 bucket binding
-   [[r2_buckets]]
-   binding = "BUCKET_NAME" # Must match the name in Worker code
-   bucket_name = "your-bucket-name" # Your R2 bucket name
-
-   # Environment variables (sensitive info, use wrangler secret instead of writing here)
-   [vars]
-   # You can set non-sensitive environment variables here
-   ```
-
-5. Save the Worker code provided in this project to `src/index.js`
-6. Update the `ALLOWED_ORIGINS` array in the code with your extension ID
-7. Add secrets (do not add these to the config file):
-
-   ```bash
-   wrangler secret put R2_ACCESS_KEY_ID
-   # Enter your Access Key ID when prompted
-
-   wrangler secret put R2_SECRET_ACCESS_KEY
-   # Enter your Secret Access Key when prompted
-
-   wrangler secret put ALLOWED_CLOUDFLARE_ID
-   # Enter your Cloudflare Account ID (32-character hex string) when prompted
-   # This is a critical security measure to prevent unauthorized usage
-   ```
-
-8. Publish Worker:
-
-   ```bash
-   wrangler publish
-   ```
-
-9. Wrangler will output your Worker URL, note it down for later configuration in the extension
 
 ### 4. Worker Code Security Considerations
 
