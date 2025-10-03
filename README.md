@@ -1,4 +1,4 @@
-![screenshot](public/icon.png)
+<img src="public/icon.png" width="28" height="28" alt="screenshot">
 
 # D2R2
 
