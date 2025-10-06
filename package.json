@@ -15,11 +15,11 @@
     "postinstall": "wxt prepare"
   },
   "dependencies": {
-    "react": "^19.1.1",
+    "react": "^19.2.0",
     "react-dom": "^19.1.1"
   },
   "devDependencies": {
-    "@types/react": "^19.1.15",
+    "@types/react": "^19.2.0",
     "@types/chrome": "^0.1.22",
     "@types/react-dom": "^19.1.9",
     "@wxt-dev/module-react": "^1.1.5",
