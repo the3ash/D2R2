@@ -15,15 +15,15 @@ export interface AppConfig {
 
 // Default configuration
 const defaultConfig: AppConfig = {
-  cloudflareId: "",
-  workerUrl: "",
-  folderPath: "",
+  cloudflareId: '',
+  workerUrl: '',
+  folderPath: '',
   hideRoot: false,
   buckets: [],
 };
 
 // Storage keys
-const STORAGE_KEY = "d2r2_config";
+const STORAGE_KEY = 'd2r2_config';
 
 // Helper function to handle storage errors
 async function handleStorageError<T>(
@@ -33,24 +33,36 @@ async function handleStorageError<T>(
   try {
     return await operation();
   } catch (error) {
-    console.error("Storage operation failed:", error);
+    console.error('Storage operation failed:', error);
     return fallback;
   }
 }
 
 // Get configuration from storage
 export async function getConfig(): Promise<AppConfig> {
-  return handleStorageError(async () => {
+  function isAppConfig(x: any): x is AppConfig {
+    return (
+      x != null &&
+      typeof x.cloudflareId === 'string' &&
+      typeof x.workerUrl === 'string' &&
+      typeof x.folderPath === 'string' &&
+      typeof x.hideRoot === 'boolean' &&
+      Array.isArray(x.buckets)
+    );
+  }
+
+  return handleStorageError<AppConfig>(async () => {
     const result = await chrome.storage.sync.get(STORAGE_KEY);
-    return result[STORAGE_KEY] || defaultConfig;
+    const stored = result[STORAGE_KEY];
+    return isAppConfig(stored) ? stored : defaultConfig;
   }, defaultConfig);
 }
 
 // Save configuration to storage
 export async function saveConfig(config: AppConfig): Promise<void> {
-  await handleStorageError(async () => {
+  await handleStorageError<void>(async () => {
     await chrome.storage.sync.set({ [STORAGE_KEY]: config });
-  }, undefined);
+  }, undefined as unknown as void);
 }
 
 // Add a new bucket to configuration
