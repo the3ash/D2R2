@@ -60,7 +60,7 @@ export async function updateContextMenu(retryCount = 0): Promise<boolean> {
     console.log("Existing menu items cleared");
 
     // Add a small delay to ensure menu clearing is complete
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 200));
 
     // Get current configuration
     const config = await getConfig();
@@ -132,6 +132,7 @@ export async function updateContextMenu(retryCount = 0): Promise<boolean> {
           title: ` / ${folder}`.replace(/\s*\/\s*/g, " / "),
           contexts: ["image"],
         });
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
     }
 
