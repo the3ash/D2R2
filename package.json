@@ -19,7 +19,7 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
-    "@types/chrome": "^0.1.31",
+    "@types/chrome": "^0.1.32",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "@wxt-dev/module-react": "^1.1.5",
