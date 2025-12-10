@@ -32,6 +32,15 @@ async function safeCreateMenuItem(
     try {
       chrome.contextMenus.create(properties, () => {
         if (chrome.runtime.lastError) {
+          const message = chrome.runtime.lastError.message || "";
+          // If the menu already exists, treat it as success to avoid noisy retries
+          if (message.toLowerCase().includes("duplicate id")) {
+            console.log(
+              `Menu item ${properties.id} already exists, skipping creation`
+            );
+            resolve(true);
+            return;
+          }
           console.error(
             `Failed to create menu item ${properties.id}:`,
             JSON.stringify(chrome.runtime.lastError)
