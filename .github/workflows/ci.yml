@@ -69,14 +69,14 @@ jobs:
         run: pnpm run zip
 
       - name: Upload Chrome build artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: chrome-extension
           path: .output/*-chrome.zip
           retention-days: 30
 
       - name: Upload build files
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: build-files
           path: .output/
