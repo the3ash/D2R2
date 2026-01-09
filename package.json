@@ -2,7 +2,7 @@
   "name": "d2r2",
   "description": "Drop images to Cloudflare R2",
   "private": true,
-  "version": "1.6.0",
+  "version": "1.6.1",
   "type": "module",
   "scripts": {
     "dev": "wxt",
