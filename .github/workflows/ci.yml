@@ -2,12 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
-    branches: [main, develop]
-  check_suite:
-    types: [completed]
-  status: {}
+    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -20,7 +17,7 @@ permissions:
 
 jobs:
   validate:
-    name: Validate Code & Build
+    name: Validate & Build
     runs-on: ubuntu-latest
 
     steps:
@@ -35,52 +32,32 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: "latest"
-          cache: "pnpm"
+          node-version: 'lts/*'
+          cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --prefer-offline
 
-      - name: Check formatting (if prettier is available)
-        run: |
-          if [ -f "pnpm-lock.yaml" ] && pnpm list prettier &>/dev/null; then
-            pnpm exec prettier --check .
-          else
-            echo "Prettier not configured, skipping format check"
-          fi
+      - name: Format check
+        run: pnpm format:check
         continue-on-error: true
 
-      - name: Run ESLint (if available)
-        run: |
-          if [ -f "pnpm-lock.yaml" ] && pnpm list eslint &>/dev/null; then
-            pnpm exec eslint .
-          else
-            echo "ESLint not configured, skipping lint check"
-          fi
+      - name: Lint
+        run: pnpm lint
         continue-on-error: true
 
       - name: Type check
-        run: pnpm run compile
+        run: tsc -b
 
-      - name: Build for Chrome
-        run: pnpm run build
+      - name: Build
+        run: pnpm build
 
-      - name: Create Chrome zip
-        run: pnpm run zip
-
-      - name: Upload Chrome build artifacts
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: chrome-extension
-          path: .output/*-chrome.zip
-          retention-days: 30
-
-      - name: Upload build files
-        uses: actions/upload-artifact@v6
-        with:
-          name: build-files
-          path: .output/
-          retention-days: 30
+          name: dist
+          path: dist/
+          retention-days: 7
 
   auto-merge:
     name: Auto Merge
@@ -100,8 +77,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Auto approve Dependabot PRs
-        if: github.actor == 'dependabot[bot]'
+      - name: Auto approve
         uses: hmarr/auto-approve-action@v4
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -112,7 +88,7 @@ jobs:
         id: wait-for-checks
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          checkName: "Validate Code & Build"
+          checkName: 'Validate & Build'
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           timeoutSeconds: 600
           intervalSeconds: 10
