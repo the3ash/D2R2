@@ -26,7 +26,6 @@
 }
 
 body {
-  margin: 0;
   display: flex;
   place-items: center;
   overflow: hidden;
@@ -116,7 +115,7 @@ body {
 .checkbox-label input[type='checkbox'] {
   width: 14px;
   height: 14px;
-  margin: 0;
+
   cursor: pointer;
   appearance: none;
   -webkit-appearance: none;
@@ -126,10 +125,6 @@ body {
   outline: none;
   position: relative;
   transition: all 0.2s;
-}
-
-.checkbox-label input[type='checkbox']:checked {
-  border-color: color-mix(in srgb, var(--fg) 16%, transparent);
 }
 
 .checkbox-label input[type='checkbox']:checked::after {
@@ -208,8 +203,8 @@ input[type='url'] {
   transition: background-color 0.15s ease-out;
 }
 
-input[type='text']:hover:not(:disabled),
-input[type='url']:hover:not(:disabled) {
+input[type='text']:hover:not(:disabled):not(:focus),
+input[type='url']:hover:not(:disabled):not(:focus) {
   background-color: color-mix(in srgb, var(--fg) 7%, transparent);
 }
 
@@ -235,6 +230,7 @@ input:focus {
   outline: none;
   border-color: var(--orange);
   box-shadow: 0 0 0 1px var(--orange);
+  background-color: var(--bg);
 }
 
 input:-internal-autofill-selected {
