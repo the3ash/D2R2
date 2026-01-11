@@ -10,6 +10,7 @@ export interface AppConfig {
   workerUrl: string;
   folderPath: string;
   hideRoot: boolean;
+  imageQuality: number;
   buckets: BucketConfig[];
 }
 
@@ -19,6 +20,7 @@ const defaultConfig: AppConfig = {
   workerUrl: '',
   folderPath: '',
   hideRoot: false,
+  imageQuality: 0,
   buckets: [],
 };
 
@@ -47,6 +49,7 @@ export async function getConfig(): Promise<AppConfig> {
       typeof x.workerUrl === 'string' &&
       typeof x.folderPath === 'string' &&
       typeof x.hideRoot === 'boolean' &&
+      (x.imageQuality == null || typeof x.imageQuality === 'number') &&
       Array.isArray(x.buckets)
     );
   }
@@ -54,7 +57,7 @@ export async function getConfig(): Promise<AppConfig> {
   return handleStorageError<AppConfig>(async () => {
     const result = await chrome.storage.sync.get(STORAGE_KEY);
     const stored = result[STORAGE_KEY];
-    return isAppConfig(stored) ? stored : defaultConfig;
+    return isAppConfig(stored) ? { ...defaultConfig, ...stored } : defaultConfig;
   }, defaultConfig);
 }
 

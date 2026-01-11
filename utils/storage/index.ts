@@ -4,6 +4,7 @@ const DEFAULT_CONFIG: AppConfig = {
   workerUrl: "",
   folderPath: "",
   hideRoot: false,
+  imageQuality: 0,
   linkType: "markdown",
   showNotifications: true,
 };
@@ -14,6 +15,7 @@ export interface AppConfig {
   workerUrl: string;
   folderPath: string;
   hideRoot: boolean;
+  imageQuality: number;
   linkType: "markdown" | "html" | "bbcode" | "plain";
   showNotifications: boolean;
 }

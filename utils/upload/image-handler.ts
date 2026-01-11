@@ -331,6 +331,69 @@ function splitBlobIntoChunks(
   return chunks;
 }
 
+async function maybeCompressImageBlob(
+  imageBlob: Blob,
+  quality: number,
+  uploadId: string
+): Promise<Blob> {
+  if (!Number.isFinite(quality) || quality <= 0) return imageBlob;
+
+  const contentType = imageBlob.type || "";
+  const isCompressibleType =
+    contentType === "image/jpeg" || contentType === "image/webp";
+  if (!isCompressibleType) return imageBlob;
+
+  const clampedQuality = Math.min(0.95, Math.max(0.1, quality));
+  if (clampedQuality >= 0.95) return imageBlob;
+
+  try {
+    uploadTaskManager.updateTaskState(
+      uploadId,
+      UploadState.PROCESSING,
+      "Compressing image..."
+    );
+
+    const bitmap = await (async () => {
+      try {
+        return await createImageBitmap(imageBlob, {
+          imageOrientation: "from-image",
+        } as any);
+      } catch {
+        return await createImageBitmap(imageBlob);
+      }
+    })();
+
+    try {
+      if (!("OffscreenCanvas" in globalThis)) return imageBlob;
+
+      const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return imageBlob;
+
+      ctx.drawImage(bitmap, 0, 0);
+
+      const compressed = await canvas.convertToBlob({
+        type: contentType,
+        quality: clampedQuality,
+      });
+
+      if (compressed.size > 0 && compressed.size < imageBlob.size) {
+        console.log(
+          `Compressed ${contentType}: ${imageBlob.size} -> ${compressed.size} bytes (q=${clampedQuality})`
+        );
+        return compressed;
+      }
+
+      return imageBlob;
+    } finally {
+      bitmap.close();
+    }
+  } catch (error) {
+    console.warn("Image compression failed, uploading original", error);
+    return imageBlob;
+  }
+}
+
 // Upload image to server using chunked upload for large files
 async function uploadImageChunked(
   imageBlob: Blob,
@@ -1073,19 +1136,23 @@ export async function handleImageClick(
     // Ensure Worker URL is properly formatted
     const formattedWorkerUrl = formatWorkerUrl(config.workerUrl);
 
+    const uploadBlob = await maybeCompressImageBlob(
+      imageDataResult.imageBlob!,
+      config.imageQuality ?? 0,
+      uploadId
+    );
+
     // Update toast to show sending
     await showLoadingToast(uploadId);
 
     // Use chunked upload for large files
     let uploadResult;
-    if (imageDataResult.imageBlob!.size > CHUNKED_UPLOAD_THRESHOLD) {
+    if (uploadBlob.size > CHUNKED_UPLOAD_THRESHOLD) {
       console.log(
-        `Using chunked upload for large file: ${
-          imageDataResult.imageBlob!.size
-        } bytes`
+        `Using chunked upload for large file: ${uploadBlob.size} bytes`
       );
       uploadResult = await uploadImageChunked(
-        imageDataResult.imageBlob!,
+        uploadBlob,
         filename,
         formattedWorkerUrl,
         config.cloudflareId,
@@ -1095,12 +1162,10 @@ export async function handleImageClick(
     } else {
       // Small file, use regular upload
       console.log(
-        `Using regular upload for small file: ${
-          imageDataResult.imageBlob!.size
-        } bytes`
+        `Using regular upload for small file: ${uploadBlob.size} bytes`
       );
       const { formData } = createUploadFormData(
-        imageDataResult.imageBlob!,
+        uploadBlob,
         info.srcUrl,
         config.cloudflareId,
         folderPath
@@ -1317,6 +1382,12 @@ export async function handleImageUpload(
         `Successfully fetched image: ${imageResult.imageBlob.size} bytes, type: ${imageResult.imageBlob.type}`
       );
 
+      const uploadBlob = await maybeCompressImageBlob(
+        imageResult.imageBlob,
+        config.imageQuality ?? 0,
+        uploadId
+      );
+
       // Upload image
       showProcessingNotification(info, "Uploading to storage...");
       uploadTaskManager.updateTaskState(uploadId, UploadState.UPLOADING, "");
@@ -1324,15 +1395,15 @@ export async function handleImageUpload(
       // Create FormData with file
       const formData = new FormData();
       const fileExt =
-        imageResult.imageBlob.type.split("/")[1] ||
+        uploadBlob.type.split("/")[1] ||
         imageUrl.split(".").pop() ||
         "jpg";
       const fileName = `image_${Date.now()}.${fileExt}`;
 
       formData.append(
         "file",
-        new File([imageResult.imageBlob], fileName, {
-          type: imageResult.imageBlob.type,
+        new File([uploadBlob], fileName, {
+          type: uploadBlob.type,
         })
       );
       formData.append("cloudflareId", config.cloudflareId);

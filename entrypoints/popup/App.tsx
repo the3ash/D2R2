@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { AppConfig, getConfig, saveConfig } from "../../utils/storage";
+import { Dropdown } from "./components/Dropdown";
 import "./style.css";
 
 // Form validation types
@@ -174,6 +175,14 @@ export default function App() {
     return <div className="loading">Loading...</div>;
   }
 
+  const qualityValue = String(config?.imageQuality ?? 0);
+  const qualityOptions = [
+    { label: "No Compression", value: "0" },
+    { label: "High", value: "0.9" },
+    { label: "Medium", value: "0.75" },
+    { label: "Low", value: "0.6" },
+  ];
+
   return (
     <div className="app">
       <div className="app-header">
@@ -319,6 +328,28 @@ export default function App() {
             </div>
             <div className="input-help">
               Multiple paths allowed, separated by commas.
+            </div>
+
+            <div style={{ marginTop: 24 }}>
+              <label className="font-caption">Image quality</label>
+              <Dropdown
+                id="image-quality"
+                value={qualityValue}
+                options={qualityOptions}
+                menuPlacement="up"
+                disabled={isSaving}
+                onChange={(v) => {
+                  const parsed = Number.parseFloat(v);
+                  setConfig((prev) =>
+                    prev
+                      ? { ...prev, imageQuality: Number.isFinite(parsed) ? parsed : 0 }
+                      : null
+                  );
+                }}
+              />
+              {qualityValue !== "0" && (
+                <div className="input-help">PNG may not compress much.</div>
+              )}
             </div>
           </div>
 
