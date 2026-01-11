@@ -75,9 +75,18 @@ class ConfigCache {
     return new Promise<AppConfig>((resolve) => {
       chrome.storage.sync.get([STORAGE_KEYS.CONFIG], (result) => {
         const config = result[STORAGE_KEYS.CONFIG] as AppConfig;
-        this.cache = {
+        const merged = {
           ...DEFAULT_CONFIG,
           ...config,
+        };
+        this.cache = {
+          ...merged,
+          imageQuality: Number.isFinite(merged.imageQuality)
+            ? merged.imageQuality
+            : DEFAULT_CONFIG.imageQuality,
+          buckets: Array.isArray((merged as any).buckets)
+            ? (merged as any).buckets
+            : DEFAULT_CONFIG.buckets,
         };
         this.lastFetchTime = Date.now();
         resolve(this.cache);
@@ -97,6 +106,12 @@ class ConfigCache {
       ...currentConfig,
       ...config,
     };
+    if (!Number.isFinite(updatedConfig.imageQuality)) {
+      updatedConfig.imageQuality = DEFAULT_CONFIG.imageQuality;
+    }
+    if (!Array.isArray((updatedConfig as any).buckets)) {
+      (updatedConfig as any).buckets = DEFAULT_CONFIG.buckets;
+    }
 
     // Save to storage
     return new Promise<AppConfig>((resolve, reject) => {

@@ -14,6 +14,14 @@ type Props = {
   onChange: (value: string) => void;
 };
 
+function valuesEqual(a: string, b: string): boolean {
+  if (a === b) return true;
+  const aNum = Number.parseFloat(a);
+  const bNum = Number.parseFloat(b);
+  if (!Number.isFinite(aNum) || !Number.isFinite(bNum)) return false;
+  return Math.abs(aNum - bNum) < 1e-6;
+}
+
 export function Dropdown({
   id,
   value,
@@ -25,10 +33,12 @@ export function Dropdown({
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
 
-  const selected = useMemo(
-    () => options.find((o) => o.value === value) ?? options[0],
-    [options, value]
-  );
+  const selected = useMemo(() => {
+    const match = options.find((o) => valuesEqual(o.value, value));
+    return match ?? options[0];
+  }, [options, value]);
+
+  const selectedValue = selected?.value ?? options[0]?.value ?? "";
 
   useEffect(() => {
     if (!open) return;
@@ -87,7 +97,7 @@ export function Dropdown({
               type="button"
               className="dropdown-option font-body"
               role="option"
-              aria-selected={opt.value === value}
+              aria-selected={valuesEqual(opt.value, selectedValue)}
               onClick={() => {
                 onChange(opt.value);
                 setOpen(false);
