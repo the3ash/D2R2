@@ -70,7 +70,7 @@ export function SettingsForm({
       </div>
 
       <div className='form-group'>
-        <label className='font-caption'>Storage Path (Optional)</label>
+        <label className='font-caption'>Storage path (Optional)</label>
         <div className='storage-path-container'>
           <input
             id='folder-path'
@@ -111,7 +111,7 @@ export function SettingsForm({
       </div>
 
       <div className='form-group'>
-        <label className='font-caption'>Image Quality</label>
+        <label className='font-caption'>Image quality</label>
         <Dropdown
           id='image-quality'
           value={qualityValue}
