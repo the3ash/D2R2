@@ -103,16 +103,6 @@ This extension uses the **Worker-bound R2 bucket** pattern:
        - Custom folder: Upload to the specified folder path
 3. Save configuration
 
-## Troubleshooting
-
-- **Invalid or unexpected token**: Check if environment variables are correctly configured, ensure using `env.variable_name` format
-- **Unauthorized (403)**: Confirm extension ID is correctly added to `ALLOWED_ORIGINS` array
-- **Server configuration error (500)**: Check if `ALLOWED_CLOUDFLARE_ID` environment variable is properly set
-- **Invalid or unauthorized Cloudflare ID**: Ensure the Cloudflare ID in your extension matches the one set in `ALLOWED_CLOUDFLARE_ID`
-- **Failed to fetch image**: Check if image URL is accessible, some websites may restrict cross-origin requests
-- **Service bind failed**: Ensure R2 bucket binding name is `BUCKET_NAME`, must match Worker code
-- **URL build error**: Need to correctly configure `BUCKET_NAME_META` environment variable or access actual bucket name
-
 ## License
 
 MIT
