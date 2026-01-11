@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from "react";
-import { AppConfig, getConfig, saveConfig } from "../../utils/storage";
-import { Dropdown } from "./components/Dropdown";
+import React, { useEffect, useState } from "react";
+import type { AppConfig } from "../../utils/storage";
+import { getConfig, saveConfig } from "../../utils/storage";
+import { testWorkerConnection } from "../../utils/cloudflare/test-worker-connection";
+import { SettingsForm } from "./components/SettingsForm";
+import { SettingsView } from "./components/SettingsView";
+import { SpinnerIcon } from "./components/SpinnerIcon";
 import "./style.css";
-
-// Form validation types
-interface ValidationErrors {
-  workerUrl?: string;
-  cloudflareId?: string;
-}
 
 export default function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
@@ -15,9 +13,6 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<ValidationErrors>(
-    {}
-  );
 
   // Load configuration
   useEffect(() => {
@@ -41,21 +36,6 @@ export default function App() {
     loadConfig();
   }, []);
 
-  // Validate form fields
-  const validateForm = (): ValidationErrors => {
-    return {};
-  };
-
-  // Check if URL is valid
-  const isValidUrl = (url: string): boolean => {
-    return !!url;
-  };
-
-  // Check if Cloudflare ID is valid
-  const isValidCloudflareId = (id: string): boolean => {
-    return !!id;
-  };
-
   // Check if form can be submitted
   const isFormSubmittable = (): boolean => {
     return !!(config?.workerUrl?.trim() && config?.cloudflareId?.trim());
@@ -73,7 +53,6 @@ export default function App() {
 
     setIsSaving(true);
     setError(null);
-    setValidationErrors({});
 
     try {
       let workerUrl = config.workerUrl.trim();
@@ -85,66 +64,13 @@ export default function App() {
         setConfig((prev) => (prev ? { ...prev, workerUrl } : null));
       }
 
-      // Add Cloudflare ID as query parameter
-      const urlObj = new URL(workerUrl);
-      urlObj.searchParams.append("cloudflareId", config.cloudflareId.trim());
-      const testUrl = urlObj.toString();
-
-      // Test GET request with longer timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-
       try {
-        const testResponse = await fetch(testUrl, {
-          method: "GET",
-          headers: {
-            Origin: location.origin,
-          },
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!testResponse.ok) {
-          let errorDetail = "";
-          try {
-            const responseText = await testResponse.text();
-            errorDetail = responseText
-              ? ` - ${responseText.substring(0, 100)}`
-              : "";
-          } catch (e) {
-            console.error("Failed to read response body:", e);
-          }
-
-          throw new Error(
-            `Connection failed: ${testResponse.status} ${testResponse.statusText}${errorDetail}`
-          );
-        }
-
-        const responseText = await testResponse.text();
-        try {
-          const responseJson = JSON.parse(responseText);
-          console.log("Test successful, response:", responseJson);
-
-          // Check ID validation result, but use generic error message
-          if (responseJson.workerInfo?.idValidation) {
-            const idValidation = responseJson.workerInfo.idValidation;
-            if (!idValidation.valid) {
-              throw new Error(
-                "Connection failed, try again or change settings"
-              );
-            }
-          }
-        } catch (e) {
-          console.log("Test response processing error:", e);
-          if (e instanceof Error) {
-            throw e;
-          } else {
-            console.log("Test successful, but response is not JSON format");
-          }
-        }
+        await testWorkerConnection(
+          workerUrl,
+          config.cloudflareId.trim(),
+          location.origin
+        );
       } catch (err) {
-        clearTimeout(timeoutId);
         if (err instanceof Error && err.name === "AbortError") {
           throw new Error("Connection timeout, try again");
         }
@@ -175,14 +101,6 @@ export default function App() {
     return <div className="loading">Loading...</div>;
   }
 
-  const qualityValue = String(config?.imageQuality ?? 0);
-  const qualityOptions = [
-    { label: "No Compression", value: "0" },
-    { label: "High", value: "0.9" },
-    { label: "Medium", value: "0.75" },
-    { label: "Low", value: "0.6" },
-  ];
-
   return (
     <div className="app">
       <div className="app-header">
@@ -197,199 +115,22 @@ export default function App() {
               cursor: isSaving ? "not-allowed" : "pointer",
             }}
           >
-            {isSaving ? (
-              <svg
-                className="loading-icon"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <circle
-                  className="spinner"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  fill="none"
-                  strokeWidth="1.35"
-                  stroke="currentColor"
-                  strokeDasharray="32"
-                  strokeLinecap="round"
-                />
-              </svg>
-            ) : (
-              "Edit"
-            )}
+            {isSaving ? <SpinnerIcon className="loading-icon" /> : "Edit"}
           </button>
         )}
       </div>
 
       {isViewMode ? (
-        <div className="view-mode">
-          <div className="form-group">
-            <label className="font-caption">Cloudflare ID</label>
-            <div className="value-display font-body">
-              {config?.cloudflareId}
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label className="font-caption">Worker URL</label>
-            <div className="value-display font-body">{config?.workerUrl}</div>
-          </div>
-
-          <div className="success-message font-body">
-            <span className="dot"></span>
-            Settings are in effect. Right-click the image to drop it to the R2
-            bucket.
-          </div>
-        </div>
+        <SettingsView config={config} />
       ) : (
-        <form onSubmit={saveAndTestConnection} autoComplete="off">
-          <div className="form-group">
-            <label className="font-caption" htmlFor="cloudflare-id">
-              Cloudflare ID
-            </label>
-            <input
-              id="cloudflare-id"
-              type="text"
-              className="font-body"
-              value={config?.cloudflareId || ""}
-              onChange={(e) =>
-                setConfig((prev) =>
-                  prev ? { ...prev, cloudflareId: e.target.value } : null
-                )
-              }
-              placeholder="Your Cloudflare Account ID"
-              disabled={isSaving}
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="font-caption" htmlFor="worker-url">
-              Worker URL
-            </label>
-            <input
-              id="worker-url"
-              type="text"
-              className="font-body"
-              value={config?.workerUrl || ""}
-              onChange={(e) =>
-                setConfig((prev) =>
-                  prev ? { ...prev, workerUrl: e.target.value } : null
-                )
-              }
-              placeholder="your-worker.your-name.workers.dev"
-              disabled={isSaving}
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </div>
-
-          <div>
-            <label className="font-caption" htmlFor="folder-path">
-              Storage Path (Optional)
-            </label>
-            <div className="storage-path-container">
-              <input
-                id="folder-path"
-                type="text"
-                className="font-body"
-                value={config?.folderPath || ""}
-                onChange={(e) =>
-                  setConfig((prev) =>
-                    prev ? { ...prev, folderPath: e.target.value } : null
-                  )
-                }
-                placeholder="folder, folder/subfolder"
-                disabled={isSaving}
-                autoComplete="off"
-                spellCheck={false}
-              />
-              {config?.folderPath && (
-                <div className="hide-root-option">
-                  <label className="checkbox-label font-caption">
-                    <input
-                      type="checkbox"
-                      checked={config?.hideRoot || false}
-                      onChange={(e) =>
-                        setConfig((prev) =>
-                          prev ? { ...prev, hideRoot: e.target.checked } : null
-                        )
-                      }
-                      disabled={isSaving}
-                    />
-                    <span className="font-caption">Hide Root</span>
-                  </label>
-                </div>
-              )}
-            </div>
-            <div className="input-help">
-              Multiple paths allowed, separated by commas.
-            </div>
-
-            <div style={{ marginTop: 24 }}>
-              <label className="font-caption">Image quality</label>
-              <Dropdown
-                id="image-quality"
-                value={qualityValue}
-                options={qualityOptions}
-                menuPlacement="up"
-                disabled={isSaving}
-                onChange={(v) => {
-                  const parsed = Number.parseFloat(v);
-                  setConfig((prev) =>
-                    prev
-                      ? { ...prev, imageQuality: Number.isFinite(parsed) ? parsed : 0 }
-                      : null
-                  );
-                }}
-              />
-              {qualityValue !== "0" && (
-                <div className="input-help">PNG may not compress much.</div>
-              )}
-            </div>
-          </div>
-
-          <div className="save-btn-container">
-            {error && <div className="error-message-text">{error}</div>}
-            <button
-              type="submit"
-              className="save-btn font-body-m"
-              disabled={isSaving || !isFormSubmittable()}
-              style={{
-                opacity: isFormSubmittable() ? 1 : 0.24,
-                cursor: isFormSubmittable() ? "pointer" : "not-allowed",
-              }}
-            >
-              {isSaving ? (
-                <svg
-                  className="loading-icon"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <circle
-                    className="spinner"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    fill="none"
-                    strokeWidth="1.35"
-                    stroke="currentColor"
-                    strokeDasharray="32"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              ) : (
-                "Save"
-              )}
-            </button>
-          </div>
-        </form>
+        <SettingsForm
+          config={config}
+          setConfig={setConfig}
+          isSaving={isSaving}
+          error={error}
+          isFormSubmittable={isFormSubmittable()}
+          onSubmit={saveAndTestConnection}
+        />
       )}
     </div>
   );

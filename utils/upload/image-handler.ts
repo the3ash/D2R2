@@ -4,6 +4,7 @@ import {
   uploadTaskManager,
   extensionStateManager,
 } from "../state";
+import { maybeCompressImageBlob } from "./compress";
 import {
   showNotification,
   showPageToast,
@@ -329,69 +330,6 @@ function splitBlobIntoChunks(
     `Split ${blob.size} byte blob into ${chunks.length} chunks of ~${chunkSize} bytes each`
   );
   return chunks;
-}
-
-async function maybeCompressImageBlob(
-  imageBlob: Blob,
-  quality: number,
-  uploadId: string
-): Promise<Blob> {
-  if (!Number.isFinite(quality) || quality <= 0) return imageBlob;
-
-  const contentType = imageBlob.type || "";
-  const isCompressibleType =
-    contentType === "image/jpeg" || contentType === "image/webp";
-  if (!isCompressibleType) return imageBlob;
-
-  const clampedQuality = Math.min(0.95, Math.max(0.1, quality));
-  if (clampedQuality >= 0.95) return imageBlob;
-
-  try {
-    uploadTaskManager.updateTaskState(
-      uploadId,
-      UploadState.PROCESSING,
-      "Compressing image..."
-    );
-
-    const bitmap = await (async () => {
-      try {
-        return await createImageBitmap(imageBlob, {
-          imageOrientation: "from-image",
-        } as any);
-      } catch {
-        return await createImageBitmap(imageBlob);
-      }
-    })();
-
-    try {
-      if (!("OffscreenCanvas" in globalThis)) return imageBlob;
-
-      const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return imageBlob;
-
-      ctx.drawImage(bitmap, 0, 0);
-
-      const compressed = await canvas.convertToBlob({
-        type: contentType,
-        quality: clampedQuality,
-      });
-
-      if (compressed.size > 0 && compressed.size < imageBlob.size) {
-        console.log(
-          `Compressed ${contentType}: ${imageBlob.size} -> ${compressed.size} bytes (q=${clampedQuality})`
-        );
-        return compressed;
-      }
-
-      return imageBlob;
-    } finally {
-      bitmap.close();
-    }
-  } catch (error) {
-    console.warn("Image compression failed, uploading original", error);
-    return imageBlob;
-  }
 }
 
 // Upload image to server using chunked upload for large files

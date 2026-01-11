@@ -1,0 +1,30 @@
+:root {
+  --fg: #0d0d0d;
+  --text-oncolor: #ffffff;
+  --bg: #ffffff;
+  --orange: #ff7900;
+  --orange-light: #ff9433;
+
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fg: #ffffff;
+    --text-oncolor: #ffffff;
+    --bg: #0d0d0d;
+    --orange: #ff7900;
+    --orange-light: #ff9433;
+    --loading: #999999;
+    --success: #00c7be;
+    --error: #ff2d55;
+  }
+}

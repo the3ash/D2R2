@@ -1,45 +1,4 @@
-:root {
-  --text-1: #0d0d0d;
-  --text-2: rgba(13, 13, 13, 0.4);
-  --text-3: rgba(13, 13, 13, 0.24);
-  --text-oncolor: #ffffff;
-  --fg: rgba(13, 13, 13, 0.05);
-  --fg-2: rgba(13, 13, 13, 0.1);
-  --bg: #ffffff;
-  --orange: #ff7900;
-  --orange-light: #ff9433;
-  --orange-2: rgba(255, 121, 0, 0.12);
-  --border: rgba(13, 13, 13, 0.1);
-
-  line-height: 1.5;
-  font-weight: 400;
-
-  color-scheme: light dark;
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-text-size-adjust: 100%;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text-1: #ffffff;
-    --text-2: rgba(255, 255, 255, 0.4);
-    --text-3: rgba(255, 255, 255, 0.24);
-    --text-oncolor: #ffffff;
-    --fg: rgba(255, 255, 255, 0.08);
-    --fg-2: rgba(255, 255, 255, 0.12);
-    --bg: #0d0d0d;
-    --orange: #ff7900;
-    --orange-light: #ff9433;
-    --orange-2: rgba(255, 121, 0, 0.12);
-    --border: rgba(255, 255, 255, 0.16);
-    --loading: #999999;
-    --success: #00c7be;
-    --error: #ff2d55;
-  }
-}
+@import './tokens.css';
 
 * {
   box-sizing: border-box;
@@ -75,7 +34,7 @@ body {
 
 .app {
   width: 360px;
-  padding: 36px 24px;
+  padding: 28px 24px 24px 24px;
   background-color: var(--bg);
 }
 
@@ -90,14 +49,14 @@ body {
   line-height: 32px;
   font-size: 32px;
   letter-spacing: -7px;
-  color: var(--color-text-primary);
+  color: var(--fg);
 }
 
 .edit-btn {
   background-color: var(--orange);
   color: var(--text-oncolor);
   border: none;
-  border-radius: 16px;
+  border-radius: 14px;
   corner-shape: squircle;
   padding: 0 20px;
   height: 32px;
@@ -106,21 +65,21 @@ body {
   transition: background-color 0.2s ease-in;
 }
 
-.edit-btn:hover {
+.edit-btn:hover:not(:disabled) {
   background-color: var(--orange-light);
   transition: background-color 0.2s ease-out;
 }
 
 .value-display {
   margin-top: -4px;
-  color: var(--text-1);
+  color: var(--fg);
   word-break: break-all;
 }
 
 .success-message {
-  margin-top: 32px;
+  margin-top: 20px;
   padding: 12px;
-  background-color: var(--orange-2);
+  background-color: color-mix(in srgb, var(--orange) 12%, transparent);
   border-radius: 20px;
   corner-shape: squircle;
   display: flex;
@@ -151,7 +110,7 @@ body {
 }
 
 .checkbox-label:hover input[type='checkbox'] {
-  border-color: var(--text-3);
+  border-color: color-mix(in srgb, var(--fg) 36%, transparent);
 }
 
 .checkbox-label input[type='checkbox'] {
@@ -162,7 +121,7 @@ body {
   appearance: none;
   -webkit-appearance: none;
   background-color: transparent;
-  border: 1.35px solid var(--border);
+  border: 1.35px solid color-mix(in srgb, var(--fg) 16%, transparent);
   border-radius: 50%;
   outline: none;
   position: relative;
@@ -170,15 +129,14 @@ body {
 }
 
 .checkbox-label input[type='checkbox']:checked {
-  background-color: var(--fg);
-  border-color: var(--border);
+  border-color: color-mix(in srgb, var(--fg) 16%, transparent);
 }
 
 .checkbox-label input[type='checkbox']:checked::after {
   content: '✓';
   position: absolute;
   font-weight: 600;
-  color: var(--text-1);
+  color: var(--fg);
   font-size: 10px;
   left: 50%;
   top: 50%;
@@ -191,11 +149,11 @@ body {
 }
 
 .checkbox-label input[type='checkbox']:checked + span {
-  color: var(--text-1);
+  color: var(--fg);
 }
 
 .checkbox-label span {
-  color: var(--text-2);
+  color: color-mix(in srgb, var(--fg) 36%, transparent);
 }
 
 .dot {
@@ -228,25 +186,31 @@ body {
 }
 
 .form-group {
-  margin: 0 0 24px 0;
+  margin: 0 0 16px 0;
 }
 
 label {
   display: block;
-  margin-bottom: 8px;
-  color: var(--text-2);
+  margin-bottom: 6px;
+  color: color-mix(in srgb, var(--fg) 36%, transparent);
 }
 
 input[type='text'],
 input[type='url'] {
   width: 100%;
-  height: 36px;
-  padding: 8px 12px;
-  border-radius: 16px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 14px;
   corner-shape: squircle;
-  color: var(--text-1);
-  background-color: var(--fg);
+  color: var(--fg);
+  background-color: color-mix(in srgb, var(--fg) 5%, transparent);
   border: none;
+  transition: background-color 0.15s ease-out;
+}
+
+input[type='text']:hover:not(:disabled),
+input[type='url']:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--fg) 7%, transparent);
 }
 
 input::-webkit-outer-spin-button,
@@ -262,8 +226,9 @@ input::-webkit-search-results-decoration {
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0px 1000px var(--fg) inset !important;
-  -webkit-text-fill-color: var(--text-1) !important;
+  -webkit-box-shadow: 0 0 0px 1000px
+    color-mix(in srgb, var(--fg) 5%, transparent) inset !important;
+  -webkit-text-fill-color: var(--fg) !important;
 }
 
 input:focus {
@@ -274,11 +239,11 @@ input:focus {
 
 input:-internal-autofill-selected {
   appearance: none !important;
-  background-color: var(--fg) !important;
+  background-color: color-mix(in srgb, var(--fg) 5%, transparent) !important;
 }
 
 input::placeholder {
-  color: var(--text-3);
+  color: color-mix(in srgb, var(--fg) 24%, transparent);
 }
 
 .dropdown {
@@ -288,13 +253,13 @@ input::placeholder {
 
 .dropdown-trigger {
   width: 100%;
-  height: 36px;
-  padding: 8px 12px;
-  border-radius: 16px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 14px;
   corner-shape: squircle;
-  color: var(--text-1);
+  color: var(--fg);
   background-color: transparent;
-  border: 1px solid var(--fg);
+  border: 1px solid color-mix(in srgb, var(--fg) 8%, transparent);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -303,7 +268,15 @@ input::placeholder {
 }
 
 .dropdown-trigger:hover:not(:disabled):not([aria-expanded='true']) {
-  border-color: var(--fg-2);
+  border-color: color-mix(in srgb, var(--fg) 16%, transparent);
+}
+
+.dropdown-trigger:focus {
+  outline: none;
+}
+
+.dropdown-trigger:focus-visible:not(:disabled):not([aria-expanded='true']) {
+  border-color: color-mix(in srgb, var(--fg) 36%, transparent);
 }
 
 .dropdown-trigger[aria-expanded='true'] {
@@ -325,7 +298,7 @@ input::placeholder {
 
 .dropdown-arrow {
   flex: 0 0 auto;
-  color: var(--text-2);
+  color: color-mix(in srgb, var(--fg) 36%, transparent);
 }
 
 .dropdown-menu {
@@ -335,11 +308,11 @@ input::placeholder {
   right: 0;
   z-index: 50;
   background-color: var(--bg);
-  border: 1px solid var(--fg);
+  border: 1px solid color-mix(in srgb, var(--text-oncolor) 12%, transparent);
   border-radius: 16px;
   corner-shape: squircle;
   padding: 4px;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
 }
 
 .dropdown-menu--up {
@@ -351,11 +324,12 @@ input::placeholder {
 
 .dropdown-option {
   width: 100%;
+  height: 28px;
   text-align: left;
-  padding: 5px 12px;
+  padding: 0 12px;
   border: none;
   background: transparent;
-  color: var(--text-1);
+  color: var(--fg);
   border-radius: 12px;
   corner-shape: squircle;
   cursor: pointer;
@@ -363,15 +337,16 @@ input::placeholder {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  transition: background-color 0.15s ease-out;
 }
 
 .dropdown-option:hover {
-  background-color: var(--fg);
+  background-color: color-mix(in srgb, var(--fg) 5%, transparent);
 }
 
 .dropdown-option-check {
   opacity: 0;
-  color: var(--text-1);
+  color: var(--fg);
   font-size: 12px;
   line-height: 16px;
   flex: 0 0 auto;
@@ -382,24 +357,24 @@ input::placeholder {
 }
 
 .input-help {
-  margin-top: 8px;
-  color: var(--text-2);
+  margin-top: 6px;
+  color: color-mix(in srgb, var(--fg) 36%, transparent);
 }
 
 .save-btn {
   width: 100%;
-  height: 36px;
-  margin-top: 24px;
+  height: 32px;
+  margin-top: 8px;
   background-color: var(--orange);
   color: var(--text-oncolor);
   border: none;
-  border-radius: 16px;
+  border-radius: 14px;
   corner-shape: squircle;
   cursor: pointer;
   transition: background-color 0.2s ease-in;
 }
 
-.save-btn:hover {
+.save-btn:hover:not(:disabled) {
   background-color: var(--orange-light);
   transition: background-color 0.2s ease-out;
 }

@@ -7,7 +7,14 @@ const DEFAULT_CONFIG: AppConfig = {
   imageQuality: 0,
   linkType: "markdown",
   showNotifications: true,
+  buckets: [],
 };
+
+export interface BucketConfig {
+  id: string;
+  name: string;
+  folders: string[];
+}
 
 // Application configuration type
 export interface AppConfig {
@@ -18,6 +25,7 @@ export interface AppConfig {
   imageQuality: number;
   linkType: "markdown" | "html" | "bbcode" | "plain";
   showNotifications: boolean;
+  buckets: BucketConfig[];
 }
 
 // Storage keys
