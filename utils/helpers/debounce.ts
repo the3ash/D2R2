@@ -9,28 +9,28 @@ export function debounce<T extends (...args: any[]) => any>(
   wait: number,
   immediate: boolean = false
 ): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout | null = null;
+  let timeout: NodeJS.Timeout | null = null
 
   return function (this: any, ...args: Parameters<T>): void {
-    const context = this;
+    const context = this
 
     const later = function () {
-      timeout = null;
-      if (!immediate) func.apply(context, args);
-    };
+      timeout = null
+      if (!immediate) func.apply(context, args)
+    }
 
-    const callNow = immediate && !timeout;
+    const callNow = immediate && !timeout
 
     if (timeout) {
-      clearTimeout(timeout);
+      clearTimeout(timeout)
     }
 
-    timeout = setTimeout(later, wait);
+    timeout = setTimeout(later, wait)
 
     if (callNow) {
-      func.apply(context, args);
+      func.apply(context, args)
     }
-  };
+  }
 }
 
 /**
@@ -47,41 +47,41 @@ export function throttle<T extends (...args: any[]) => any>(
     trailing: true,
   }
 ): (...args: Parameters<T>) => void {
-  let lastCall = 0;
-  let timeout: NodeJS.Timeout | null = null;
-  let lastArgs: Parameters<T> | null = null;
-  let context: any = null;
+  let lastCall = 0
+  let timeout: NodeJS.Timeout | null = null
+  let lastArgs: Parameters<T> | null = null
+  let context: any = null
 
-  const { leading = true, trailing = true } = options;
+  const { leading = true, trailing = true } = options
 
   return function (this: any, ...args: Parameters<T>): void {
-    const now = Date.now();
+    const now = Date.now()
 
-    context = this;
-    lastArgs = args;
+    context = this
+    lastArgs = args
 
     if (!lastCall && !leading) {
-      lastCall = now;
+      lastCall = now
     }
 
-    const remaining = limit - (now - lastCall);
+    const remaining = limit - (now - lastCall)
 
     if (remaining <= 0 || remaining > limit) {
       if (timeout) {
-        clearTimeout(timeout);
-        timeout = null;
+        clearTimeout(timeout)
+        timeout = null
       }
 
-      lastCall = now;
-      func.apply(context, args);
+      lastCall = now
+      func.apply(context, args)
     } else if (!timeout && trailing) {
       timeout = setTimeout(() => {
-        lastCall = leading ? Date.now() : 0;
-        timeout = null;
-        func.apply(context, lastArgs!);
-      }, remaining);
+        lastCall = leading ? Date.now() : 0
+        timeout = null
+        func.apply(context, lastArgs!)
+      }, remaining)
     }
-  };
+  }
 }
 
 /**
@@ -91,17 +91,14 @@ export function throttle<T extends (...args: any[]) => any>(
 export function once<T extends (...args: any[]) => any>(
   func: T
 ): (...args: Parameters<T>) => ReturnType<T> | undefined {
-  let called = false;
-  let result: ReturnType<T> | undefined;
+  let called = false
+  let result: ReturnType<T> | undefined
 
-  return function (
-    this: any,
-    ...args: Parameters<T>
-  ): ReturnType<T> | undefined {
+  return function (this: any, ...args: Parameters<T>): ReturnType<T> | undefined {
     if (!called) {
-      called = true;
-      result = func.apply(this, args);
+      called = true
+      result = func.apply(this, args)
     }
-    return result;
-  };
+    return result
+  }
 }

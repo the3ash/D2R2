@@ -1,8 +1,8 @@
-import React from "react";
+import React from 'react'
 
 type Props = {
-  className?: string;
-};
+  className?: string
+}
 
 export function SpinnerIcon({ className }: Props) {
   return (
@@ -26,6 +26,5 @@ export function SpinnerIcon({ className }: Props) {
         strokeLinecap="round"
       />
     </svg>
-  );
+  )
 }
-

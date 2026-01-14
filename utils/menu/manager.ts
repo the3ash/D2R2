@@ -6,4 +6,4 @@ export {
   PARENT_MENU_ID,
   ROOT_FOLDER_ID,
   FOLDER_PREFIX,
-} from "./index";
+} from './index'

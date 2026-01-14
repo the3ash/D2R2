@@ -3,11 +3,7 @@
  */
 
 // Main entry points
-export {
-  handleImageClick,
-  handleImageUpload,
-  processMenuClick,
-} from "./image-handler";
+export { handleImageClick, handleImageUpload, processMenuClick } from './image-handler'
 
 // Core upload functions (for potential reuse)
 export {
@@ -15,7 +11,7 @@ export {
   createUploadFormData,
   uploadImageToServer,
   uploadImageWithRetry,
-} from "./upload-core";
+} from './upload-core'
 
 // Retry utilities (for potential reuse)
 export {
@@ -26,7 +22,7 @@ export {
   calculateRetryDelay,
   estimateNetworkCondition,
   getEnhancedErrorMessage,
-} from "./retry";
+} from './retry'
 
 // Handler utilities
 export {
@@ -37,7 +33,7 @@ export {
   validateSourceUrl,
   determineTargetFolderWithConfig,
   generateUniqueId,
-} from "./handlers";
+} from './handlers'
 
 // Compression
-export { maybeCompressImageBlob } from "./compress";
+export { maybeCompressImageBlob } from './compress'

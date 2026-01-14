@@ -1,104 +1,97 @@
-import React, { useEffect, useState } from "react";
-import type { AppConfig } from "../../utils/storage";
-import { getConfig, saveConfig } from "../../utils/storage";
-import { testWorkerConnection } from "../../utils/cloudflare/test-worker-connection";
-import { SettingsForm } from "./components/SettingsForm";
-import { SettingsView } from "./components/SettingsView";
-import { SpinnerIcon } from "./components/SpinnerIcon";
-import "./style.css";
+import React, { useEffect, useState } from 'react'
+import type { AppConfig } from '../../utils/storage'
+import { getConfig, saveConfig } from '../../utils/storage'
+import { testWorkerConnection } from '../../utils/cloudflare/test-worker-connection'
+import { SettingsForm } from './components/SettingsForm'
+import { SettingsView } from './components/SettingsView'
+import { SpinnerIcon } from './components/SpinnerIcon'
+import './style.css'
 
 export default function App() {
-  const [config, setConfig] = useState<AppConfig | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isViewMode, setIsViewMode] = useState(false);
+  const [config, setConfig] = useState<AppConfig | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isViewMode, setIsViewMode] = useState(false)
 
   // Load configuration
   useEffect(() => {
     const loadConfig = async () => {
       try {
-        const data = await getConfig();
-        setConfig(data);
-        setError(null);
+        const data = await getConfig()
+        setConfig(data)
+        setError(null)
 
         if (data && data.workerUrl && data.cloudflareId) {
-          setIsViewMode(true);
+          setIsViewMode(true)
         }
       } catch (err) {
-        setError("Failed to load configuration");
-        console.error(err);
+        setError('Failed to load configuration')
+        console.error(err)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    loadConfig();
-  }, []);
+    loadConfig()
+  }, [])
 
   // Check if form can be submitted
   const isFormSubmittable = (): boolean => {
-    return !!(config?.workerUrl?.trim() && config?.cloudflareId?.trim());
-  };
+    return !!(config?.workerUrl?.trim() && config?.cloudflareId?.trim())
+  }
 
   // Save configuration and test connection
   const saveAndTestConnection = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
 
-    if (!config) return;
+    if (!config) return
 
     if (!config.workerUrl?.trim() || !config.cloudflareId?.trim()) {
-      return;
+      return
     }
 
-    setIsSaving(true);
-    setError(null);
+    setIsSaving(true)
+    setError(null)
 
     try {
-      let workerUrl = config.workerUrl.trim();
-      if (
-        !workerUrl.startsWith("http://") &&
-        !workerUrl.startsWith("https://")
-      ) {
-        workerUrl = `https://${workerUrl}`;
-        setConfig((prev) => (prev ? { ...prev, workerUrl } : null));
+      let workerUrl = config.workerUrl.trim()
+      if (!workerUrl.startsWith('http://') && !workerUrl.startsWith('https://')) {
+        workerUrl = `https://${workerUrl}`
+        setConfig((prev) => (prev ? { ...prev, workerUrl } : null))
       }
 
       try {
-        await testWorkerConnection(
-          workerUrl,
-          config.cloudflareId.trim(),
-          location.origin
-        );
+        await testWorkerConnection(workerUrl, config.cloudflareId.trim(), location.origin)
       } catch (err) {
-        if (err instanceof Error && err.name === "AbortError") {
-          throw new Error("Connection timeout, try again");
+        if (err instanceof Error && err.name === 'AbortError') {
+          throw new Error('Connection timeout, try again')
         }
-        throw err;
+        throw err
       }
 
-      await saveConfig(config);
-      setIsViewMode(true);
+      await saveConfig(config)
+      setIsViewMode(true)
     } catch (err) {
       setError(
-        err instanceof Error && err.name === "AbortError"
-          ? "Connection timeout, try again"
-          : "Connection failed, try again or change settings"
-      );
-      console.error(err);
-      setTimeout(() => setError(null), 3000);
+        err instanceof Error && err.name === 'AbortError'
+          ? 'Connection timeout, try again'
+          : 'Connection failed, try again or change settings'
+      )
+      console.error(err)
+      setTimeout(() => setError(null), 3000)
     } finally {
-      setIsSaving(false);
+      setIsSaving(false)
     }
-  };
+  }
 
   // Switch to edit mode
   const handleEdit = () => {
-    setIsViewMode(false);
-  };
+    setIsViewMode(false)
+  }
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return <div className="loading">Loading...</div>
   }
 
   return (
@@ -112,10 +105,10 @@ export default function App() {
             disabled={isSaving}
             style={{
               opacity: isSaving ? 0.24 : 1,
-              cursor: isSaving ? "not-allowed" : "pointer",
+              cursor: isSaving ? 'not-allowed' : 'pointer',
             }}
           >
-            {isSaving ? <SpinnerIcon className="loading-icon" /> : "Edit"}
+            {isSaving ? <SpinnerIcon className="loading-icon" /> : 'Edit'}
           </button>
         )}
       </div>
@@ -133,5 +126,5 @@ export default function App() {
         />
       )}
     </div>
-  );
+  )
 }
