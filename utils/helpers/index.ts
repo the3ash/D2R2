@@ -15,7 +15,7 @@ interface ErrorHandlingOptions {
     retryCount: number
     maxRetries: number
     retryInterval: number
-    retryCallback: Function
+    retryCallback: () => void
   }
 }
 

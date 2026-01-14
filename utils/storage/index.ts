@@ -81,9 +81,7 @@ class ConfigCache {
           imageQuality: Number.isFinite(merged.imageQuality)
             ? merged.imageQuality
             : DEFAULT_CONFIG.imageQuality,
-          buckets: Array.isArray((merged as any).buckets)
-            ? (merged as any).buckets
-            : DEFAULT_CONFIG.buckets,
+          buckets: Array.isArray(merged.buckets) ? merged.buckets : DEFAULT_CONFIG.buckets,
         }
         this.lastFetchTime = Date.now()
         resolve(this.cache)
@@ -106,8 +104,8 @@ class ConfigCache {
     if (!Number.isFinite(updatedConfig.imageQuality)) {
       updatedConfig.imageQuality = DEFAULT_CONFIG.imageQuality
     }
-    if (!Array.isArray((updatedConfig as any).buckets)) {
-      ;(updatedConfig as any).buckets = DEFAULT_CONFIG.buckets
+    if (!Array.isArray(updatedConfig.buckets)) {
+      updatedConfig.buckets = DEFAULT_CONFIG.buckets
     }
 
     // Save to storage

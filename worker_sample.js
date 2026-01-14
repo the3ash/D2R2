@@ -217,7 +217,7 @@ async function handleFileRequest(request, env) {
 
 // Main request handler
 export default {
-  async fetch(request, env, ctx) {
+  async fetch(request, env) {
     // Check required environment variable
     if (!env.ALLOWED_CLOUDFLARE_ID) {
       console.error('ALLOWED_CLOUDFLARE_ID not configured')

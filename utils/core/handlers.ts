@@ -1,6 +1,6 @@
 import { extensionStateManager, pageStateManager, uploadTaskManager } from '../state'
 import { TOAST_STATUS } from '../state/types'
-import { showNotification, showPageToast, showProcessingNotification } from '../notifications'
+import { showNotification, showPageToast } from '../notifications'
 import { processMenuClick } from '../upload'
 import { quickInitialize, performInitialization } from './initialization'
 import { handleError } from '../helpers'
@@ -140,7 +140,7 @@ export async function initializeExtension() {
 
               // First check if content script is ready
               try {
-                chrome.tabs.sendMessage(tabId, { action: 'ping' }, (response) => {
+                chrome.tabs.sendMessage(tabId, { action: 'ping' }, () => {
                   const hasError = chrome.runtime.lastError
                   if (hasError) {
                     console.log(

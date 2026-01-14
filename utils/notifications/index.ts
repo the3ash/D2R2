@@ -59,6 +59,13 @@ class NotificationManager {
   }
 
   /**
+   * Get active loading notification ID
+   */
+  public getActiveLoadingId(): string | null {
+    return this.activeLoadingId
+  }
+
+  /**
    * Update existing notification
    * If notification ID exists, update its content; otherwise create a new notification
    */
@@ -490,7 +497,7 @@ export function showProcessingNotification(
   const manager = NotificationManager.getInstance()
 
   // Query existing active loading notification ID
-  const activeId = (manager as any).activeLoadingId
+  const activeId = manager.getActiveLoadingId()
 
   if (activeId) {
     // If there's an active notification ID, update it
@@ -559,7 +566,7 @@ export async function showPageToast(
   toastId?: string
 ): Promise<string> {
   const manager = NotificationManager.getInstance()
-  const activeId = (manager as any).activeLoadingId
+  const activeId = manager.getActiveLoadingId()
 
   // If it's a loading type and there's a toastId or active ID, try to update instead of create
   if ((type === 'loading' || type === TOAST_STATUS.DROPPING) && (toastId || activeId)) {
@@ -592,7 +599,7 @@ export async function showPageToast(
           toastId,
         },
         // Add callback function to handle errors
-        (response) => {
+        () => {
           const error = chrome.runtime.lastError
           if (error) {
             console.warn(

@@ -73,11 +73,11 @@ export async function handleImageClick(
     uploadTaskManager.updateTaskState(uploadId, UploadState.PROCESSING)
     await showLoadingToast(uploadId)
 
-    const formattedWorkerUrl = formatWorkerUrl(config.workerUrl)
+    const formattedWorkerUrl = formatWorkerUrl(config!.workerUrl)
 
     const uploadBlob = await maybeCompressImageBlob(
       imageDataResult.imageBlob!,
-      config.imageQuality ?? 0,
+      config!.imageQuality ?? 0,
       uploadId
     )
 
@@ -86,14 +86,14 @@ export async function handleImageClick(
     const { formData } = createUploadFormData(
       uploadBlob,
       info.srcUrl,
-      config.cloudflareId,
+      config!.cloudflareId,
       folderPath
     )
 
     const uploadResult = await uploadImageWithRetry(formData, formattedWorkerUrl, uploadId)
 
-    if (uploadResult.success && uploadResult.result.success) {
-      await handleSuccessfulUpload(uploadResult.result, uploadId)
+    if (uploadResult.success && uploadResult.result && uploadResult.result.success) {
+      await handleSuccessfulUpload(uploadResult.result as { url: string }, uploadId)
     } else {
       await handleFailedUpload(uploadResult.error || uploadResult.result?.error, uploadId)
     }
@@ -126,7 +126,7 @@ export async function handleImageUpload(
     const notificationId = showProcessingNotification(info, 'Processing image')
     console.log(`Created processing notification: ${notificationId}`)
 
-    const initPromise = new Promise<boolean>(async (resolve) => {
+    const initPromise = (async (): Promise<boolean> => {
       if (!extensionStateManager.isReady()) {
         console.log('Extension not fully initialized, will queue upload and wait')
 
@@ -161,15 +161,14 @@ export async function handleImageUpload(
             undefined,
             notificationId
           )
-          resolve(false)
-          return
+          return false
         } else {
           uploadTaskManager.updateTaskState(uploadId, UploadState.LOADING, '')
           showProcessingNotification(info, 'Extension initialized, proceeding with upload...')
         }
       }
-      resolve(true)
-    })
+      return true
+    })()
 
     const configPromise = getConfig()
     const [initSuccess, config] = await Promise.all([initPromise, configPromise])
@@ -260,8 +259,12 @@ export async function handleImageUpload(
 
       const uploadResult = await uploadImageWithRetry(formData, formattedWorkerUrl, uploadId)
 
-      if (uploadResult.success && uploadResult.result.success) {
-        await handleSuccessfulUpload(uploadResult.result, uploadId, notificationId)
+      if (uploadResult.success && uploadResult.result && uploadResult.result.success) {
+        await handleSuccessfulUpload(
+          uploadResult.result as { url: string },
+          uploadId,
+          notificationId
+        )
         return true
       } else {
         await handleFailedUpload(

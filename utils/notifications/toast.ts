@@ -150,7 +150,8 @@ export function showNotification(title: string, message: string, imageUrl?: stri
 
 // Helper function: Show notification if image is being processed
 export function showProcessingNotification(info: chrome.contextMenus.OnClickData) {
-  const srcUrl = info.srcUrl ? info.srcUrl.substring(0, 30) + '...' : 'unknown'
+  const srcUrlPreview = info.srcUrl ? info.srcUrl.substring(0, 30) + '...' : 'unknown'
+  console.log(`Processing image: ${srcUrlPreview}`)
   showNotification(TOAST_STATUS.DROPPING, 'Dropping', 'loading')
   console.log('Added to queue, will be processed when extension is fully initialized')
 }

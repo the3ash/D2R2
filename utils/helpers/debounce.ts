@@ -4,15 +4,17 @@
  * @param wait Wait time in milliseconds
  * @param immediate Execute immediately on the leading edge
  */
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: Parameters<T>) => ReturnType<T>>(
   func: T,
   wait: number,
   immediate: boolean = false
 ): (...args: Parameters<T>) => void {
   let timeout: NodeJS.Timeout | null = null
+  let context: unknown = null
 
-  return function (this: any, ...args: Parameters<T>): void {
-    const context = this
+  return function (this: unknown, ...args: Parameters<T>): void {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
+    context = this
 
     const later = function () {
       timeout = null
@@ -39,7 +41,7 @@ export function debounce<T extends (...args: any[]) => any>(
  * @param limit Minimum time between executions in milliseconds
  * @param options Additional options
  */
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: Parameters<T>) => ReturnType<T>>(
   func: T,
   limit: number,
   options: { leading?: boolean; trailing?: boolean } = {
@@ -50,13 +52,14 @@ export function throttle<T extends (...args: any[]) => any>(
   let lastCall = 0
   let timeout: NodeJS.Timeout | null = null
   let lastArgs: Parameters<T> | null = null
-  let context: any = null
+  let context: unknown = null
 
   const { leading = true, trailing = true } = options
 
-  return function (this: any, ...args: Parameters<T>): void {
+  return function (this: unknown, ...args: Parameters<T>): void {
     const now = Date.now()
 
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     context = this
     lastArgs = args
 
@@ -88,13 +91,13 @@ export function throttle<T extends (...args: any[]) => any>(
  * Create a function that can be called at most once
  * @param func The function to restrict
  */
-export function once<T extends (...args: any[]) => any>(
+export function once<T extends (...args: Parameters<T>) => ReturnType<T>>(
   func: T
 ): (...args: Parameters<T>) => ReturnType<T> | undefined {
   let called = false
   let result: ReturnType<T> | undefined
 
-  return function (this: any, ...args: Parameters<T>): ReturnType<T> | undefined {
+  return function (this: unknown, ...args: Parameters<T>): ReturnType<T> | undefined {
     if (!called) {
       called = true
       result = func.apply(this, args)

@@ -9,7 +9,6 @@ import {
 } from '../utils/core'
 import { showPageToast, showNotification } from '../utils/notifications'
 import { TOAST_STATUS } from '../utils/state/types'
-import { getConfig } from '../utils/storage'
 import { formatWorkerUrl } from '../utils/helpers'
 import { handleError } from '../utils/helpers'
 
@@ -42,9 +41,10 @@ const sendHeartbeats = async () => {
     } catch (error) {
       console.warn(`Failed to send heartbeat to tab ${tabId}:`, error)
       // If tab doesn't exist anymore, remove the upload
+      const errorMessage = error instanceof Error ? error.message : ''
       if (
-        (error as any)?.message?.includes('receiving end does not exist') ||
-        (error as any)?.message?.includes('tab was closed')
+        errorMessage.includes('receiving end does not exist') ||
+        errorMessage.includes('tab was closed')
       ) {
         activeUploads.delete(toastId)
       }
@@ -218,7 +218,7 @@ export default defineBackground(() => {
               showNotification(TOAST_STATUS.FAILED, errorMsg, 'error')
               sendResponse({ success: false, error: errorMsg })
             }
-          } catch (e) {
+          } catch {
             showNotification(
               TOAST_STATUS.DONE,
               'Worker response is not JSON format, but connection succeeded',

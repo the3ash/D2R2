@@ -27,7 +27,7 @@ export async function maybeCompressImageBlob(
       try {
         return await createImageBitmap(imageBlob, {
           imageOrientation: 'from-image',
-        } as any)
+        } as unknown as ImageBitmapOptions)
       } catch {
         return await createImageBitmap(imageBlob)
       }

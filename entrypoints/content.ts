@@ -2,23 +2,21 @@ import { defineContentScript } from 'wxt/utils/define-content-script'
 import './content/toast.css'
 import { isDevelopment } from '../utils/helpers/logger'
 
-declare const chrome: any
-
 // Create logging utility functions that only display logs in development environment
-const log = (...args: any[]) => {
+const log = (...args: unknown[]) => {
   if (isDevelopment()) {
     console.log(...args)
   }
 }
 
-const warn = (...args: any[]) => {
+const warn = (...args: unknown[]) => {
   if (isDevelopment()) {
     console.warn(...args)
   }
 }
 
 // Add error logging function
-const error = (...args: any[]) => {
+const error = (...args: unknown[]) => {
   // Errors are always logged, but more detailed in development environment
   if (isDevelopment()) {
     console.error(...args)
@@ -76,7 +74,7 @@ export default defineContentScript({
       }
 
       // Create observer instance
-      const observer = new MutationObserver((mutations) => {
+      const observer = new MutationObserver(() => {
         // If toast container has been removed, re-add it
         if (toastContainerExists && !document.querySelector('.d2r2-toast-container')) {
           warn('Toast container was removed, re-appending to body')
@@ -298,7 +296,7 @@ export default defineContentScript({
         toast.style.transform = 'translateY(-20px)'
 
         // Force browser repaint
-        toast.offsetHeight
+        void toast.offsetHeight
 
         // Set transition
         toast.style.transition = 'opacity 0.2s ease-out, transform 0.2s ease-out'
@@ -333,7 +331,11 @@ export default defineContentScript({
 
     // Listen for messages from background
     chrome.runtime.onMessage.addListener(
-      (message: any, sender: any, sendResponse: (response?: any) => void) => {
+      (
+        message: { action: string; data?: Record<string, unknown>; toastId?: string },
+        _sender: chrome.runtime.MessageSender,
+        sendResponse: (response?: { success: boolean; error?: string; loaded?: boolean }) => void
+      ) => {
         log('Content script received message:', message)
 
         if (message.action === 'showToast') {
@@ -343,7 +345,11 @@ export default defineContentScript({
             sendResponse({ success: false, error: 'Missing toast data' })
             return true
           }
-          const { title, message: msg, type, imageUrl, toastId: msgToastId } = data
+          const title = data.title as string
+          const msg = data.message as string
+          const type = (data.type as 'success' | 'error' | 'info' | 'loading') || 'info'
+          const imageUrl = data.imageUrl as string | undefined
+          const msgToastId = data.toastId as string | undefined
 
           // Store toastId for visibility change handling
           if (type === 'loading' && msgToastId) {

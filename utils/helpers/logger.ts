@@ -26,7 +26,7 @@ export function setupEnhancedLogging() {
       // Check if the extension is running in production by checking update_url
       isRuntimeProduction = !!window.chrome.runtime.getManifest().update_url
     }
-  } catch (e) {
+  } catch {
     // Ignore errors, use build-time determined environment
   }
 
@@ -87,7 +87,7 @@ export function isDevelopment(): boolean {
       if (chrome.runtime.getManifest && chrome.runtime.getManifest().update_url) {
         return false
       }
-    } catch (e) {
+    } catch {
       // If detection fails, default to development environment
     }
   }
@@ -112,7 +112,7 @@ export interface ErrorHandlingOptions {
     retryCount: number
     maxRetries: number
     retryInterval: number
-    retryCallback: Function
+    retryCallback: () => void
   }
 }
 

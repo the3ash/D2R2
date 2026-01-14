@@ -83,8 +83,7 @@ export function estimateNetworkCondition(recentErrors: ErrorCategory[] = []): Ne
 // Calculate optimal retry delay
 export function calculateRetryDelay(
   retryCount: number,
-  errorCategory: ErrorCategory,
-  networkCondition: NetworkCondition
+  errorCategory: ErrorCategory
 ): number {
   let baseDelay = Math.min(1000 * Math.pow(2, retryCount), 30000)
   const jitter = Math.random() * 0.3 * baseDelay
@@ -135,7 +134,7 @@ export function shouldRetry(
     return { retry: false, delay: 0, reason: 'Device appears to be offline' }
   }
 
-  const delay = calculateRetryDelay(retryCount, errorCategory, networkCondition)
+  const delay = calculateRetryDelay(retryCount, errorCategory)
 
   return {
     retry: true,

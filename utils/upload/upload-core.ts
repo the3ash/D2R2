@@ -118,7 +118,7 @@ export async function uploadImageToServer(
   uploadId: string
 ): Promise<{
   success: boolean
-  result?: any
+  result?: { success: boolean; url?: string; error?: string }
   error?: string
   status?: number
 }> {
@@ -210,11 +210,11 @@ export async function uploadImageWithRetry(
   workerUrl: string,
   uploadId: string,
   maxRetries = 3
-): Promise<{ success: boolean; result?: any; error?: string }> {
+): Promise<{ success: boolean; result?: { success: boolean; url?: string; error?: string }; error?: string }> {
   let retryCount = 0
   let lastError: string | undefined
   let lastStatus: number | undefined
-  let recentErrors: ErrorCategory[] = []
+  const recentErrors: ErrorCategory[] = []
 
   while (retryCount <= maxRetries) {
     try {

@@ -2,7 +2,7 @@ import { extensionStateManager, pageStateManager } from '../state'
 import { updateContextMenu } from '../menu'
 
 // Core initialization function to reduce code duplication
-export async function performInitialization(source: string, tabId?: number): Promise<boolean> {
+export async function performInitialization(source: string): Promise<boolean> {
   try {
     // Check if initialization should proceed using state manager
     if (!extensionStateManager.startInitialization(source)) {
@@ -48,7 +48,7 @@ export async function quickInitialize(): Promise<boolean> {
         chrome.tabs.sendMessage(
           pageStateManager.getActiveTab() as number,
           { action: 'ping' },
-          (response) => {
+          () => {
             if (chrome.runtime.lastError) {
               console.log(
                 'Content script not ready in active tab:',
@@ -77,7 +77,7 @@ export async function quickInitialize(): Promise<boolean> {
 export async function reinitializeForTab(tabId: number) {
   try {
     // Core initialization
-    const initResult = await performInitialization('reinitializeForTab', tabId)
+    const initResult = await performInitialization('reinitializeForTab')
     if (!initResult) {
       return
     }

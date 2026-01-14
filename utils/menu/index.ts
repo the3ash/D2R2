@@ -74,10 +74,10 @@ export async function updateContextMenu(retryCount = 0): Promise<boolean> {
 
     // Log config details (redacted for security)
     console.log('Context menu configuration:', {
-      folderCount: !!config.folderPath ? parseFolderPath(config.folderPath).length : 0,
+      folderCount: config.folderPath ? parseFolderPath(config.folderPath).length : 0,
       hideRoot: config.hideRoot,
-      hasCloudflareId: !!config.cloudflareId,
-      hasWorkerUrl: !!config.workerUrl,
+      hasCloudflareId: Boolean(config.cloudflareId),
+      hasWorkerUrl: Boolean(config.workerUrl),
     })
 
     const folders = parseFolderPath(config.folderPath)

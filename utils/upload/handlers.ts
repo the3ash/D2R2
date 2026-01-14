@@ -6,11 +6,13 @@ import { TOAST_STATUS } from '../state/types'
 import { UploadState, uploadTaskManager } from '../state'
 import { showNotification, showPageToast } from '../notifications'
 import { handleError } from '../helpers/logger'
-import { getConfig } from '../storage'
+import { getConfig, AppConfig } from '../storage'
 import { parseFolderPath, ROOT_FOLDER_ID, FOLDER_PREFIX, PARENT_MENU_ID } from '../menu'
 
 // Validate configuration for image upload
-export async function validateConfig(uploadId: string): Promise<{ valid: boolean; config?: any }> {
+export async function validateConfig(
+  uploadId: string
+): Promise<{ valid: boolean; config?: AppConfig }> {
   console.log('Getting configuration...')
   uploadTaskManager.updateTaskState(uploadId, UploadState.LOADING)
   const config = await getConfig()
@@ -28,7 +30,7 @@ export async function validateConfig(uploadId: string): Promise<{ valid: boolean
 
 // Process successful upload
 export async function handleSuccessfulUpload(
-  result: any,
+  result: { url: string },
   uploadId: string,
   notificationId?: string
 ): Promise<void> {
@@ -105,7 +107,7 @@ export function validateSourceUrl(info: chrome.contextMenus.OnClickData, taskId:
 export async function determineTargetFolderWithConfig(
   info: chrome.contextMenus.OnClickData,
   taskId: string,
-  config: any
+  config: AppConfig
 ): Promise<{ isValid: boolean; targetFolder: string | null }> {
   let targetFolder: string | null = null
 
