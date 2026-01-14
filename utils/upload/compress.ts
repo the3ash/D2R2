@@ -3,7 +3,7 @@ import { UploadState, uploadTaskManager } from "../state";
 export async function maybeCompressImageBlob(
   imageBlob: Blob,
   quality: number,
-  uploadId: string
+  uploadId: string,
 ): Promise<Blob> {
   if (!Number.isFinite(quality) || quality <= 0) return imageBlob;
 
@@ -13,13 +13,15 @@ export async function maybeCompressImageBlob(
     ?.trim()
     .toLowerCase();
   const contentType =
-    normalizedContentType === "image/jpg" ? "image/jpeg" : normalizedContentType;
+    normalizedContentType === "image/jpg"
+      ? "image/jpeg"
+      : normalizedContentType;
 
   const isCompressibleType =
     contentType === "image/jpeg" || contentType === "image/webp";
   if (!isCompressibleType) {
     console.log(
-      `Image compression skipped: unsupported type "${rawContentType || "unknown"}"`
+      `Image compression skipped: unsupported type "${rawContentType || "unknown"}"`,
     );
     return imageBlob;
   }
@@ -31,7 +33,7 @@ export async function maybeCompressImageBlob(
     uploadTaskManager.updateTaskState(
       uploadId,
       UploadState.PROCESSING,
-      "Compressing image..."
+      "Compressing image...",
     );
 
     const bitmap = await (async () => {
@@ -47,7 +49,7 @@ export async function maybeCompressImageBlob(
     try {
       if (!("OffscreenCanvas" in globalThis)) {
         console.warn(
-          "Image compression skipped: OffscreenCanvas is not available in this context"
+          "Image compression skipped: OffscreenCanvas is not available in this context",
         );
         return imageBlob;
       }
@@ -55,7 +57,7 @@ export async function maybeCompressImageBlob(
       const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
       if (!("convertToBlob" in canvas)) {
         console.warn(
-          "Image compression skipped: OffscreenCanvas.convertToBlob is not available"
+          "Image compression skipped: OffscreenCanvas.convertToBlob is not available",
         );
         return imageBlob;
       }
@@ -71,13 +73,13 @@ export async function maybeCompressImageBlob(
 
       if (compressed.size > 0 && compressed.size < imageBlob.size) {
         console.log(
-          `Compressed ${contentType}: ${imageBlob.size} -> ${compressed.size} bytes (q=${clampedQuality})`
+          `Compressed ${contentType}: ${imageBlob.size} -> ${compressed.size} bytes (q=${clampedQuality})`,
         );
         return compressed;
       }
 
       console.log(
-        `Image compression skipped: output not smaller (${imageBlob.size} -> ${compressed.size} bytes, q=${clampedQuality})`
+        `Image compression skipped: output not smaller (${imageBlob.size} -> ${compressed.size} bytes, q=${clampedQuality})`,
       );
       return imageBlob;
     } finally {
