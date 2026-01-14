@@ -104,20 +104,6 @@ export async function initializeExtension() {
     // Core initialization
     await performInitialization('initializeExtension')
 
-    // Verify icon resources are available
-    try {
-      const iconUrl = chrome.runtime.getURL('icon/48.png')
-      console.log('Verifying icon URL:', iconUrl)
-      const iconResponse = await fetch(iconUrl)
-      if (iconResponse.ok) {
-        console.log('Icon resource verification successful')
-      } else {
-        console.error('Icon resource inaccessible:', iconResponse.status, iconResponse.statusText)
-      }
-    } catch (iconError) {
-      handleError(iconError, 'icon verification')
-    }
-
     // Listen for configuration changes, update menu
     chrome.storage.onChanged.addListener((changes, area) => {
       if (area === 'sync' && changes['d2r2_config']) {
