@@ -2,8 +2,11 @@
  * Upload module exports
  */
 
-// Main entry points
-export { handleImageClick, handleImageUpload, processMenuClick } from './image-handler'
+// Main entry point - unified upload function
+export { uploadImage } from './uploader'
+
+// Progress tracking
+export { updateUploadProgress, getStageMessage, type UploadStage } from './progress'
 
 // Core upload functions (for potential reuse)
 export {
@@ -24,7 +27,7 @@ export {
   getEnhancedErrorMessage,
 } from './retry'
 
-// Handler utilities
+// Handler utilities (kept for backward compatibility during migration)
 export {
   validateConfig,
   handleSuccessfulUpload,

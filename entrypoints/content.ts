@@ -109,6 +109,10 @@ export default defineContentScript({
     let heartbeatIntervalId: number | null = null
     let toastId: string | null = null
 
+    // Toast timeout constants
+    const TOAST_ACTIVITY_TIMEOUT = 60000 // 60 seconds without activity before removing toast
+    const TOAST_HEARTBEAT_CHECK_INTERVAL = 10000 // Check every 10 seconds
+
     // Helper function to create toast element
     const createToastElement = (type: string, toastId: string) => {
       const toast = document.createElement('div')
@@ -182,39 +186,37 @@ export default defineContentScript({
                 ? 'Failed'
                 : title
 
-      // If showing an error or success toast, first remove any existing loading toast
-      // with the same ID to prevent duplicate toasts
+      // If showing an error or success toast, find and update any existing toast with the same ID
       if ((type === 'error' || type === 'success') && toastId) {
-        const existingToasts = document.querySelectorAll('.d2r2-toast')
-        let existingToastFound = false
+        // First try to find any toast with matching ID (not just loading type)
+        const existingToast = document.querySelector(
+          `.d2r2-toast[data-toast-id="${toastId}"]`
+        ) as HTMLElement | null
 
-        existingToasts.forEach((existingToast: Element) => {
-          const htmlToast = existingToast as HTMLElement
-          if (
-            htmlToast.dataset.toastId === toastId &&
-            htmlToast.classList.contains('d2r2-toast-loading')
-          ) {
-            // Instead of removing, update the existing toast
-            htmlToast.className = `d2r2-toast d2r2-toast-${type}`
-            updateToastContent(htmlToast, displayTitle, message)
+        if (existingToast) {
+          log(`Found existing toast with ID ${toastId}, updating to ${type}`)
 
-            // Update activity timestamp
-            currentUploadLastActivity = Date.now()
+          // Update the toast type and content
+          existingToast.className = `d2r2-toast d2r2-toast-${type}`
+          updateToastContent(existingToast, displayTitle, message)
 
-            // Set timeout for auto-removal
-            if (currentUploadTimeoutId !== null) {
-              clearTimeout(currentUploadTimeoutId)
-            }
+          // Update activity timestamp
+          currentUploadLastActivity = Date.now()
 
-            // Set timeout for auto-removal (1 second)
-            currentUploadTimeoutId = window.setTimeout(() => removeToast(htmlToast), 1000)
-
-            existingToastFound = true
+          // Clear any existing timeout
+          if (currentUploadTimeoutId !== null) {
+            clearTimeout(currentUploadTimeoutId)
           }
-        })
 
-        // If we updated an existing toast, return it
-        if (existingToastFound) {
+          // Clear heartbeat interval since upload is complete
+          if (heartbeatIntervalId !== null) {
+            clearInterval(heartbeatIntervalId)
+            heartbeatIntervalId = null
+          }
+
+          // Set timeout for auto-removal (2 seconds for better visibility)
+          currentUploadTimeoutId = window.setTimeout(() => removeToast(existingToast), 2000)
+
           return
         }
       }
@@ -260,22 +262,22 @@ export default defineContentScript({
         currentUploadToast = toast
         currentUploadLastActivity = Date.now()
 
-        // Set up heartbeat check for loading toast (every 5 seconds)
+        // Set up heartbeat check for loading toast
         if (heartbeatIntervalId !== null) {
           clearInterval(heartbeatIntervalId)
         }
 
         heartbeatIntervalId = window.setInterval(() => {
-          if (currentUploadLastActivity && Date.now() - currentUploadLastActivity > 10000) {
-            // If no activity for 10 seconds, assume the upload is lost and remove toast
-            log('No upload activity detected for 10 seconds, removing toast')
+          if (currentUploadLastActivity && Date.now() - currentUploadLastActivity > TOAST_ACTIVITY_TIMEOUT) {
+            // If no activity for 60 seconds, assume the upload is lost and remove toast
+            log('No upload activity detected for 60 seconds, removing toast')
             if (currentUploadToast) {
               removeToast(currentUploadToast)
             }
             clearInterval(heartbeatIntervalId!)
             heartbeatIntervalId = null
           }
-        }, 5000)
+        }, TOAST_HEARTBEAT_CHECK_INTERVAL)
       }
 
       toast.innerHTML = `

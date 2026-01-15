@@ -1,6 +1,7 @@
 import { defineBackground } from 'wxt/utils/define-background'
 import { setupEnhancedLogging } from '../utils/helpers'
-import { extensionStateManager, pageStateManager } from '../utils/state'
+import { extensionStateManager, pageStateManager, uploadTaskManager } from '../utils/state'
+import { UploadState } from '../utils/state/types'
 import {
   initializeExtension,
   handleMenuClick,
@@ -15,38 +16,29 @@ import { handleError } from '../utils/helpers'
 // Setup enhanced logging first
 setupEnhancedLogging()
 
-// Track active uploads
-const activeUploads = new Map<string, { timestamp: number; tabId: number }>()
-
-// Send heartbeats to active tabs with uploads
+/**
+ * Send heartbeats to content scripts for active uploads
+ * Uses uploadTaskManager as the single source of truth
+ */
 const sendHeartbeats = async () => {
-  const now = Date.now()
-  // Copy activeUploads to avoid iterator invalidation during deletion
-  const uploads = [...activeUploads.entries()]
+  const activeUploads = uploadTaskManager.getActiveUploads()
 
-  for (const [toastId, { timestamp, tabId }] of uploads) {
-    // If upload is more than 30 seconds old, consider it lost
-    if (now - timestamp > 30000) {
-      console.log(`Upload ${toastId} timed out after 30 seconds`)
-      activeUploads.delete(toastId)
-      continue
-    }
-
+  for (const { taskId, tabId } of activeUploads) {
     try {
-      // Send heartbeat to tab
       await chrome.tabs.sendMessage(tabId, {
         action: 'heartbeat',
-        toastId,
+        toastId: taskId,
       })
     } catch (error) {
-      console.warn(`Failed to send heartbeat to tab ${tabId}:`, error)
-      // If tab doesn't exist anymore, remove the upload
       const errorMessage = error instanceof Error ? error.message : ''
+      // If tab doesn't exist anymore, mark the upload as error
       if (
         errorMessage.includes('receiving end does not exist') ||
-        errorMessage.includes('tab was closed')
+        errorMessage.includes('tab was closed') ||
+        errorMessage.includes('Could not establish connection')
       ) {
-        activeUploads.delete(toastId)
+        console.warn(`Tab ${tabId} closed, marking upload ${taskId} as error`)
+        uploadTaskManager.updateTaskState(taskId, UploadState.ERROR, 'Tab closed')
       }
     }
   }
@@ -64,24 +56,13 @@ export default defineBackground(() => {
         const elapsedTime = Date.now() - pendingClick.timestamp
         console.log(`Processing click from ${elapsedTime}ms ago`)
 
-        // Get active tab
         const { info, tab } = pendingClick
-        const tabId = tab?.id
-
-        // Generate toast ID
-        const toastId = `upload_queue_${Date.now()}`
-
-        // Register this as an active upload
-        if (tabId) {
-          activeUploads.set(toastId, {
-            timestamp: Date.now(),
-            tabId,
-          })
-        }
 
         // Show toast for pending click being processed
-        showPageToast(TOAST_STATUS.DROPPING, 'Dropping', 'loading', undefined, toastId)
+        const toastId = `upload_queue_${Date.now()}`
+        showPageToast(TOAST_STATUS.DROPPING, 'Processing queued upload...', 'loading', undefined, toastId)
 
+        // handleMenuClick will create its own task ID and manage the upload
         handleMenuClick(info, tab)
       }
     }
@@ -241,26 +222,24 @@ export default defineBackground(() => {
 
       return true
     } else if (message.action === 'checkUploadStatus') {
-      // Handle upload status check
+      // Handle upload status check using uploadTaskManager
       const { toastId } = message
       if (!toastId) {
         sendResponse({ status: 'inactive' })
         return true
       }
 
-      // Check if upload is still active
-      if (activeUploads.has(toastId)) {
+      // Check if upload is still active using task manager
+      const taskState = uploadTaskManager.getTaskState(toastId)
+      if (taskState && taskState !== UploadState.SUCCESS && taskState !== UploadState.ERROR) {
         sendResponse({ status: 'active' })
       } else {
         sendResponse({ status: 'inactive' })
       }
       return true
     } else if (message.action === 'uploadSuccess' || message.action === 'uploadFailed') {
-      // Mark upload as completed
-      const { toastId } = message
-      if (toastId && activeUploads.has(toastId)) {
-        activeUploads.delete(toastId)
-      }
+      // Upload completion is already handled by uploadTaskManager
+      // Just acknowledge the message
       sendResponse({ success: true })
       return true
     }

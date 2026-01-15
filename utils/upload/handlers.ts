@@ -31,8 +31,7 @@ export async function validateConfig(
 // Process successful upload
 export async function handleSuccessfulUpload(
   result: { url: string },
-  uploadId: string,
-  notificationId?: string
+  uploadId: string
 ): Promise<void> {
   try {
     console.log(`Successfully uploaded image: ${result.url}`)
@@ -43,7 +42,7 @@ export async function handleSuccessfulUpload(
       'Upload complete!',
       'success',
       result.url,
-      notificationId
+      uploadId
     )
 
     console.log(`Upload task ${uploadId} completed successfully`)
@@ -55,8 +54,7 @@ export async function handleSuccessfulUpload(
 // Process failed upload
 export async function handleFailedUpload(
   errorMessage: string = 'Unknown error',
-  uploadId: string,
-  notificationId?: string
+  uploadId: string
 ): Promise<void> {
   try {
     console.error(`Upload failed for task ${uploadId}: ${errorMessage}`)
@@ -79,7 +77,7 @@ export async function handleFailedUpload(
 
     uploadTaskManager.updateTaskState(uploadId, UploadState.ERROR, displayMessage)
 
-    await showPageToast(TOAST_STATUS.FAILED, displayMessage, 'error', undefined, notificationId)
+    await showPageToast(TOAST_STATUS.FAILED, displayMessage, 'error', undefined, uploadId)
 
     console.log(`Upload task ${uploadId} failed: ${displayMessage}`)
   } catch (error) {

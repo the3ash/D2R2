@@ -215,6 +215,34 @@ export class UploadTaskManager {
       console.log(`Cleaned up ${tasksToRemove.length} old upload tasks`)
     }
   }
+
+  /**
+   * Get all active uploads for heartbeat mechanism
+   * Returns tasks that are in progress (not SUCCESS or ERROR state)
+   */
+  public getActiveUploads(): Array<{ taskId: string; tabId: number }> {
+    const result: Array<{ taskId: string; tabId: number }> = []
+
+    this.tasks.forEach((task, taskId) => {
+      // Only include tasks that are still in progress
+      if (
+        task.state !== UploadState.SUCCESS &&
+        task.state !== UploadState.ERROR &&
+        task.tab?.id
+      ) {
+        result.push({ taskId, tabId: task.tab.id })
+      }
+    })
+
+    return result
+  }
+
+  /**
+   * Get tab ID for a specific task
+   */
+  public getTaskTabId(taskId: string): number | undefined {
+    return this.tasks.get(taskId)?.tab?.id
+  }
 }
 
 // PageStateManager for tracking page/tab state
