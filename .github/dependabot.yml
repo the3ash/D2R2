@@ -1,97 +1,51 @@
 version: 2
 updates:
-  # Enable npm dependency updates
+  # npm dependencies
   - package-ecosystem: 'npm'
     directory: '/'
     schedule:
       interval: 'weekly'
       day: 'monday'
-      time: '09:00'
-    # Allow automatic merging of non-major version updates
-    open-pull-requests-limit: 10
-    allow:
-      - dependency-type: 'all'
     assignees:
       - 'the3ash'
     commit-message:
       prefix: 'deps'
       prefix-development: 'dev'
-      include: 'scope'
-    versioning-strategy: auto
     labels:
       - 'dependencies'
-      - 'automated'
-    # Group minor and patch updates together
     groups:
+      # Chrome extension framework (WXT)
+      wxt:
+        patterns: ['wxt', '@wxt-dev/*']
+        update-types: ['minor', 'patch']
+      # React ecosystem
       react:
-        patterns:
-          - 'react*'
-        update-types:
-          - 'minor'
-          - 'patch'
-      vite:
-        patterns:
-          - 'vite*'
-          - '@vitejs/*'
-        update-types:
-          - 'minor'
-          - 'patch'
-      eslint:
-        patterns:
-          - 'eslint*'
-          - '@eslint/*'
-          - 'eslint-*'
-        update-types:
-          - 'minor'
-          - 'patch'
-      typescript:
-        patterns:
-          - 'typescript*'
-          - '@types/*'
-          - 'typescript-*'
-        update-types:
-          - 'minor'
-          - 'patch'
-      prettier:
-        patterns:
-          - 'prettier*'
-          - 'eslint-config-prettier'
-          - 'eslint-plugin-prettier'
-        update-types:
-          - 'minor'
-          - 'patch'
-      # Catch-all group for everything else
-      other-deps:
-        patterns:
-          - '*'
-        exclude-patterns:
-          - 'react*'
-          - 'vite*'
-          - '@vitejs/*'
-          - 'eslint*'
-          - '@eslint/*'
-          - 'eslint-*'
-          - 'typescript*'
-          - '@types/*'
-          - 'typescript-*'
-          - 'prettier*'
-        update-types:
-          - 'minor'
-          - 'patch'
+        patterns: ['react', 'react-dom', '@types/react*']
+        update-types: ['minor', 'patch']
+      # Build tools
+      build-tools:
+        patterns: ['vite', '@vitejs/*', 'typescript']
+        update-types: ['minor', 'patch']
+      # Linting & formatting
+      code-quality:
+        patterns: ['eslint*', 'prettier*', '@eslint/*', '@typescript-eslint/*', 'typescript-eslint']
+        update-types: ['minor', 'patch']
+      # Chrome types
+      chrome-types:
+        patterns: ['@types/chrome']
+        update-types: ['minor', 'patch']
 
-  # Enable GitHub Actions updates
+  # GitHub Actions
   - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:
       interval: 'weekly'
       day: 'monday'
-      time: '09:00'
-    open-pull-requests-limit: 10
     assignees:
       - 'the3ash'
     commit-message:
-      prefix: 'github-actions'
-      include: 'scope'
+      prefix: 'ci'
     labels:
       - 'dependencies'
-      - 'automated'
+
+
