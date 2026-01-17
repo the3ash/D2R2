@@ -2,12 +2,7 @@ import { defineBackground } from 'wxt/utils/define-background'
 import { setupEnhancedLogging } from '../utils/helpers'
 import { extensionStateManager, pageStateManager, uploadTaskManager } from '../utils/state'
 import { UploadState } from '../utils/state/types'
-import {
-  initializeExtension,
-  handleMenuClick,
-  reinitializeForTab,
-  quickInitialize,
-} from '../utils/core'
+import { initializeExtension, handleMenuClick, reinitializeForTab, quickInitialize } from '../utils/core'
 import { showPageToast, showNotification } from '../utils/notifications'
 import { TOAST_STATUS } from '../utils/state/types'
 import { formatWorkerUrl } from '../utils/helpers'
@@ -126,13 +121,7 @@ export default defineBackground(() => {
         }
       } catch (error) {
         const errorMessage = handleError(error, 'window focus handling')
-        showPageToast(
-          TOAST_STATUS.FAILED,
-          errorMessage,
-          'error',
-          undefined,
-          `window_focus_error_${Date.now()}`
-        )
+        showPageToast(TOAST_STATUS.FAILED, errorMessage, 'error', undefined, `window_focus_error_${Date.now()}`)
       }
     }
   })

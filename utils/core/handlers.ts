@@ -39,10 +39,7 @@ function determineTargetFolder(
 /**
  * Main menu click handler - unified entry point for all uploads
  */
-export async function handleMenuClick(
-  info: chrome.contextMenus.OnClickData,
-  tab?: chrome.tabs.Tab
-) {
+export async function handleMenuClick(info: chrome.contextMenus.OnClickData, tab?: chrome.tabs.Tab) {
   try {
     console.log('======= MENU CLICK START =======')
     console.log('Menu data:', {
@@ -122,13 +119,7 @@ export async function handleMenuClick(
     // Show error notification
     try {
       showNotification(TOAST_STATUS.FAILED, errorMessage, 'error')
-      await showPageToast(
-        TOAST_STATUS.FAILED,
-        errorMessage,
-        'error',
-        undefined,
-        `error_${Date.now()}`
-      )
+      await showPageToast(TOAST_STATUS.FAILED, errorMessage, 'error', undefined, `error_${Date.now()}`)
     } catch (notificationError) {
       console.error('Failed to show error notification:', notificationError)
     }
@@ -196,10 +187,7 @@ export async function initializeExtension() {
                 chrome.tabs.sendMessage(tabId, { action: 'ping' }, () => {
                   const hasError = chrome.runtime.lastError
                   if (hasError) {
-                    console.log(
-                      'Content script not responding, may be new page or not loaded: ',
-                      hasError
-                    )
+                    console.log('Content script not responding, may be new page or not loaded: ', hasError)
                     // Don't proceed with test, this is normal for new tabs
                   } else {
                     // Content script is ready, send test notification

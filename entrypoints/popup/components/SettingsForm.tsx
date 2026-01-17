@@ -19,14 +19,7 @@ const QUALITY_OPTIONS = [
   { label: 'Low', value: '0.4' },
 ]
 
-export function SettingsForm({
-  config,
-  setConfig,
-  isSaving,
-  error,
-  isFormSubmittable,
-  onSubmit,
-}: Props) {
+export function SettingsForm({ config, setConfig, isSaving, error, isFormSubmittable, onSubmit }: Props) {
   const qualityValue = String(config?.imageQuality ?? 0)
 
   return (
@@ -38,9 +31,7 @@ export function SettingsForm({
           type="text"
           className="font-body"
           value={config?.cloudflareId || ''}
-          onChange={(e) =>
-            setConfig((prev) => (prev ? { ...prev, cloudflareId: e.target.value } : null))
-          }
+          onChange={(e) => setConfig((prev) => (prev ? { ...prev, cloudflareId: e.target.value } : null))}
           placeholder="Your Cloudflare Account ID"
           disabled={isSaving}
           autoComplete="off"
@@ -55,9 +46,7 @@ export function SettingsForm({
           type="text"
           className="font-body"
           value={config?.workerUrl || ''}
-          onChange={(e) =>
-            setConfig((prev) => (prev ? { ...prev, workerUrl: e.target.value } : null))
-          }
+          onChange={(e) => setConfig((prev) => (prev ? { ...prev, workerUrl: e.target.value } : null))}
           placeholder="your-worker.subdomain.workers.dev"
           disabled={isSaving}
           autoComplete="off"
@@ -73,9 +62,7 @@ export function SettingsForm({
             type="text"
             className="font-body"
             value={config?.folderPath || ''}
-            onChange={(e) =>
-              setConfig((prev) => (prev ? { ...prev, folderPath: e.target.value } : null))
-            }
+            onChange={(e) => setConfig((prev) => (prev ? { ...prev, folderPath: e.target.value } : null))}
             placeholder="folder, folder/subfolder"
             disabled={isSaving}
             autoComplete="off"
@@ -87,9 +74,7 @@ export function SettingsForm({
                 <input
                   type="checkbox"
                   checked={config?.hideRoot || false}
-                  onChange={(e) =>
-                    setConfig((prev) => (prev ? { ...prev, hideRoot: e.target.checked } : null))
-                  }
+                  onChange={(e) => setConfig((prev) => (prev ? { ...prev, hideRoot: e.target.checked } : null))}
                   disabled={isSaving}
                 />
                 <span className="font-caption">Hide Root</span>

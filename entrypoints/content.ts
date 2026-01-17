@@ -189,9 +189,7 @@ export default defineContentScript({
       // If showing an error or success toast, find and update any existing toast with the same ID
       if ((type === 'error' || type === 'success') && toastId) {
         // First try to find any toast with matching ID (not just loading type)
-        const existingToast = document.querySelector(
-          `.d2r2-toast[data-toast-id="${toastId}"]`
-        ) as HTMLElement | null
+        const existingToast = document.querySelector(`.d2r2-toast[data-toast-id="${toastId}"]`) as HTMLElement | null
 
         if (existingToast) {
           log(`Found existing toast with ID ${toastId}, updating to ${type}`)

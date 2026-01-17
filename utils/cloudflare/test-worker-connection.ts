@@ -27,9 +27,7 @@ export async function testWorkerConnection(
         console.error('Failed to read response body:', e)
       }
 
-      throw new Error(
-        `Connection failed: ${testResponse.status} ${testResponse.statusText}${errorDetail}`
-      )
+      throw new Error(`Connection failed: ${testResponse.status} ${testResponse.statusText}${errorDetail}`)
     }
 
     const responseText = await testResponse.text()

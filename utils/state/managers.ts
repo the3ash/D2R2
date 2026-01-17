@@ -90,10 +90,7 @@ export class UploadTaskManager {
 
   constructor() {}
 
-  public createTask(
-    info: chrome.contextMenus.OnClickData,
-    tabOrFolder?: chrome.tabs.Tab | string | null
-  ): string {
+  public createTask(info: chrome.contextMenus.OnClickData, tabOrFolder?: chrome.tabs.Tab | string | null): string {
     // Generate a unique task ID
     const taskId = `upload_${Date.now()}`
 
@@ -225,11 +222,7 @@ export class UploadTaskManager {
 
     this.tasks.forEach((task, taskId) => {
       // Only include tasks that are still in progress
-      if (
-        task.state !== UploadState.SUCCESS &&
-        task.state !== UploadState.ERROR &&
-        task.tab?.id
-      ) {
+      if (task.state !== UploadState.SUCCESS && task.state !== UploadState.ERROR && task.tab?.id) {
         result.push({ taskId, tabId: task.tab.id })
       }
     })

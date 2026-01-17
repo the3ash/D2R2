@@ -25,9 +25,7 @@ interface ErrorHandlingOptions {
 export function formatWorkerUrl(url: string): string {
   if (!url) return url
   const trimmedUrl = url.trim()
-  return !trimmedUrl.startsWith('http://') && !trimmedUrl.startsWith('https://')
-    ? `https://${trimmedUrl}`
-    : trimmedUrl
+  return !trimmedUrl.startsWith('http://') && !trimmedUrl.startsWith('https://') ? `https://${trimmedUrl}` : trimmedUrl
 }
 
 /**
@@ -44,11 +42,7 @@ export function setupEnhancedLogging() {
  * Unified error handler with consistent formatting and behavior
  * @deprecated Use the handleError from logger.ts instead
  */
-export function handleError(
-  error: unknown,
-  context: string,
-  options: ErrorHandlingOptions = {}
-): string {
+export function handleError(error: unknown, context: string, options: ErrorHandlingOptions = {}): string {
   // Format error message consistently
   const errorMessage = error instanceof Error ? error.message : String(error)
   const errorStack = error instanceof Error ? error.stack : undefined
@@ -65,9 +59,7 @@ export function handleError(
 
     if (retryCount < maxRetries) {
       if (isDevelopment()) {
-        console.log(
-          `[${context}] Retrying in ${retryInterval}ms (attempt ${retryCount + 1}/${maxRetries})...`
-        )
+        console.log(`[${context}] Retrying in ${retryInterval}ms (attempt ${retryCount + 1}/${maxRetries})...`)
       }
       setTimeout(() => {
         retryCallback()

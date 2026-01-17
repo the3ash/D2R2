@@ -35,11 +35,7 @@ const stageMessages: Record<UploadStage, string> = {
  * Update upload progress and notify content script
  * This keeps the toast alive by updating lastActivity timestamp
  */
-export async function updateUploadProgress(
-  uploadId: string,
-  stage: UploadStage,
-  tabId?: number
-): Promise<void> {
+export async function updateUploadProgress(uploadId: string, stage: UploadStage, tabId?: number): Promise<void> {
   // Update task state in manager
   uploadTaskManager.updateTaskState(uploadId, stageToState(stage))
 

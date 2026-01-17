@@ -22,9 +22,7 @@ export async function showPageToast(
 
     const activeTab = tabs[0]
     console.log(
-      `[Toast][${toastId || 'unknown'}] ${title}: ${message.substring(0, 50)}${
-        message.length > 50 ? '...' : ''
-      }`
+      `[Toast][${toastId || 'unknown'}] ${title}: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`
     )
 
     // Check tab URL to ensure not on chrome:// etc.
@@ -50,10 +48,7 @@ export async function showPageToast(
         // Check for errors but don't block execution
         const hasError = chrome.runtime.lastError
         if (hasError) {
-          console.log(
-            "Toast message may have failed (this is normal if page doesn't allow injection):",
-            hasError
-          )
+          console.log("Toast message may have failed (this is normal if page doesn't allow injection):", hasError)
           return
         }
 
@@ -75,8 +70,7 @@ export async function showPageToast(
 export function showNotification(title: string, message: string, imageUrl?: string) {
   try {
     // Also try to show toast on page
-    const toastType =
-      title === TOAST_STATUS.DONE ? 'success' : title === TOAST_STATUS.FAILED ? 'error' : 'loading'
+    const toastType = title === TOAST_STATUS.DONE ? 'success' : title === TOAST_STATUS.FAILED ? 'error' : 'loading'
     const notificationId = `d2r2_${Date.now()}`
     showPageToast(title, message, toastType, imageUrl, notificationId)
 
@@ -97,9 +91,7 @@ export function showNotification(title: string, message: string, imageUrl?: stri
 
       // Remove sameID click listener
       const handleNotificationClick = (clickedId: string) => {
-        console.log(
-          `Notification click event triggered, clicked ID: ${clickedId}, expected ID: ${notificationId}`
-        )
+        console.log(`Notification click event triggered, clicked ID: ${clickedId}, expected ID: ${notificationId}`)
         if (clickedId === notificationId && imageUrl) {
           console.log(`Notification clicked, opening URL: ${imageUrl}`)
           chrome.tabs.create({ url: imageUrl })

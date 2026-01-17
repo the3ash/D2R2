@@ -78,9 +78,7 @@ class ConfigCache {
         }
         this.cache = {
           ...merged,
-          imageQuality: Number.isFinite(merged.imageQuality)
-            ? merged.imageQuality
-            : DEFAULT_CONFIG.imageQuality,
+          imageQuality: Number.isFinite(merged.imageQuality) ? merged.imageQuality : DEFAULT_CONFIG.imageQuality,
           buckets: Array.isArray(merged.buckets) ? merged.buckets : DEFAULT_CONFIG.buckets,
         }
         this.lastFetchTime = Date.now()

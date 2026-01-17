@@ -17,12 +17,7 @@ export function setupEnhancedLogging() {
   // Only try to use chrome API when code is actually running (not during build)
   try {
     // Browser runtime, use more precise detection
-    if (
-      typeof window !== 'undefined' &&
-      window.chrome &&
-      window.chrome.runtime &&
-      window.chrome.runtime.getManifest
-    ) {
+    if (typeof window !== 'undefined' && window.chrome && window.chrome.runtime && window.chrome.runtime.getManifest) {
       // Check if the extension is running in production by checking update_url
       isRuntimeProduction = !!window.chrome.runtime.getManifest().update_url
     }
@@ -117,11 +112,7 @@ export interface ErrorHandlingOptions {
 }
 
 // Unified error handler with consistent formatting and behavior
-export function handleError(
-  error: unknown,
-  context: string,
-  options: ErrorHandlingOptions = {}
-): string {
+export function handleError(error: unknown, context: string, options: ErrorHandlingOptions = {}): string {
   // Format error message consistently
   const errorMessage = error instanceof Error ? error.message : String(error)
   const errorStack = error instanceof Error ? error.stack : undefined
@@ -138,9 +129,7 @@ export function handleError(
 
     if (retryCount < maxRetries) {
       if (isDevelopment()) {
-        console.log(
-          `[${context}] Retrying in ${retryInterval}ms (attempt ${retryCount + 1}/${maxRetries})...`
-        )
+        console.log(`[${context}] Retrying in ${retryInterval}ms (attempt ${retryCount + 1}/${maxRetries})...`)
       }
       setTimeout(() => {
         retryCallback()

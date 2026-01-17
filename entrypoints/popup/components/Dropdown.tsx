@@ -22,14 +22,7 @@ function valuesEqual(a: string, b: string): boolean {
   return Math.abs(aNum - bNum) < 1e-6
 }
 
-export function Dropdown({
-  id,
-  value,
-  options,
-  disabled,
-  menuPlacement = 'down',
-  onChange,
-}: Props) {
+export function Dropdown({ id, value, options, disabled, menuPlacement = 'down', onChange }: Props) {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement | null>(null)
 
@@ -65,13 +58,7 @@ export function Dropdown({
         onClick={() => setOpen((v) => !v)}
       >
         <span className="dropdown-value">{selected?.label}</span>
-        <svg
-          className="dropdown-arrow"
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
+        <svg className="dropdown-arrow" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true">
           <path
             d="M6 9l6 6 6-6"
             fill="none"

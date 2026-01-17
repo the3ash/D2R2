@@ -110,9 +110,7 @@ class NotificationManager {
 
       // Replace notification in queue
       this.queue[existingIndex] = updatedNotification
-      console.log(
-        `Updated notification: ${id}, type: ${type}, message: ${message.substring(0, 30)}...`
-      )
+      console.log(`Updated notification: ${id}, type: ${type}, message: ${message.substring(0, 30)}...`)
 
       return id
     } else {
@@ -164,9 +162,7 @@ class NotificationManager {
       }
 
       // Remove all unprocessed loading notifications from the queue
-      const loadingNotifications = this.queue.filter(
-        (item) => item.type === 'loading' && !item.processed
-      )
+      const loadingNotifications = this.queue.filter((item) => item.type === 'loading' && !item.processed)
 
       if (loadingNotifications.length > 0) {
         loadingNotifications.forEach((item) => {
@@ -180,16 +176,13 @@ class NotificationManager {
     } else if (type !== 'loading' && this.activeLoadingId) {
       // If it's not a loading type and there's an active loading ID, reset it
       // It could be a success or error notification
-      console.log(
-        `Resetting active loading ID ${this.activeLoadingId} for new ${type} notification`
-      )
+      console.log(`Resetting active loading ID ${this.activeLoadingId} for new ${type} notification`)
       this.activeLoadingId = null
     }
 
     // Check if a similar notification is already in the queue - also check type
     const similarNotification = this.queue.find(
-      (item) =>
-        item.title === title && item.message === message && item.type === type && !item.processed
+      (item) => item.title === title && item.message === message && item.type === type && !item.processed
     )
 
     if (similarNotification) {
@@ -228,9 +221,7 @@ class NotificationManager {
 
     // Add to queue
     this.queue.push(notification)
-    console.log(
-      `Added notification to queue: ${id}, type: ${type}, queue length: ${this.queue.length}`
-    )
+    console.log(`Added notification to queue: ${id}, type: ${type}, queue length: ${this.queue.length}`)
 
     return id
   }
@@ -319,9 +310,7 @@ class NotificationManager {
       }
 
       const activeTab = tabs[0]
-      console.log(
-        `[Toast][${id}] ${title}: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`
-      )
+      console.log(`[Toast][${id}] ${title}: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`)
 
       // Check tab URL to ensure it's not on a special page
       if (
@@ -365,14 +354,9 @@ class NotificationManager {
             if (response && response.success) {
               console.log(`[Toast][${id}] Toast displayed on page`)
             } else if (response) {
-              console.error(
-                `[Toast][${id}] Toast display failed:`,
-                response.error || 'Unknown reason'
-              )
+              console.error(`[Toast][${id}] Toast display failed:`, response.error || 'Unknown reason')
             } else {
-              console.log(
-                `[Toast][${id}] No toast response received (content script may not be loaded)`
-              )
+              console.log(`[Toast][${id}] No toast response received (content script may not be loaded)`)
             }
 
             resolve()
@@ -441,10 +425,7 @@ class NotificationManager {
             },
             (createdId) => {
               if (chrome.runtime.lastError) {
-                console.error(
-                  `[System][${id}] Notification creation failed:`,
-                  chrome.runtime.lastError
-                )
+                console.error(`[System][${id}] Notification creation failed:`, chrome.runtime.lastError)
                 // If creation fails, remove listener
                 if (imageUrl) {
                   chrome.notifications.onClicked.removeListener(handleNotificationClick)
@@ -545,12 +526,7 @@ export function showNotification(
   }
 
   // Add to notification queue
-  return NotificationManager.getInstance().addNotification(
-    title,
-    message,
-    notificationType,
-    options
-  )
+  return NotificationManager.getInstance().addNotification(title, message, notificationType, options)
 }
 
 /**
@@ -585,27 +561,20 @@ export async function showPageToast(
   // For successful or failed notifications with a toastId, notify background
   if (
     toastId &&
-    (type === 'success' ||
-      type === TOAST_STATUS.DONE ||
-      type === 'error' ||
-      type === TOAST_STATUS.FAILED)
+    (type === 'success' || type === TOAST_STATUS.DONE || type === 'error' || type === TOAST_STATUS.FAILED)
   ) {
     try {
       // Notify background script that upload has completed or failed
       chrome.runtime.sendMessage(
         {
-          action:
-            type === 'success' || type === TOAST_STATUS.DONE ? 'uploadSuccess' : 'uploadFailed',
+          action: type === 'success' || type === TOAST_STATUS.DONE ? 'uploadSuccess' : 'uploadFailed',
           toastId,
         },
         // Add callback function to handle errors
         () => {
           const error = chrome.runtime.lastError
           if (error) {
-            console.warn(
-              'Expected error when notifying background (can be ignored):',
-              error.message
-            )
+            console.warn('Expected error when notifying background (can be ignored):', error.message)
           }
         }
       )

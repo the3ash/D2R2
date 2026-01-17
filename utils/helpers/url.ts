@@ -2,7 +2,5 @@
 export function formatWorkerUrl(url: string): string {
   if (!url) return url
   const trimmedUrl = url.trim()
-  return !trimmedUrl.startsWith('http://') && !trimmedUrl.startsWith('https://')
-    ? `https://${trimmedUrl}`
-    : trimmedUrl
+  return !trimmedUrl.startsWith('http://') && !trimmedUrl.startsWith('https://') ? `https://${trimmedUrl}` : trimmedUrl
 }

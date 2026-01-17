@@ -34,19 +34,11 @@ export function classifyError(error: Error | string, status?: number): ErrorCate
     return ErrorCategory.TEMPORARY
   }
 
-  if (
-    errorMessage.includes('timeout') ||
-    errorMessage.includes('abort') ||
-    errorMessage.includes('timed out')
-  ) {
+  if (errorMessage.includes('timeout') || errorMessage.includes('abort') || errorMessage.includes('timed out')) {
     return ErrorCategory.TIMEOUT
   }
 
-  if (
-    errorMessage.includes('rate limit') ||
-    errorMessage.includes('too many requests') ||
-    status === 429
-  ) {
+  if (errorMessage.includes('rate limit') || errorMessage.includes('too many requests') || status === 429) {
     return ErrorCategory.RATE_LIMIT
   }
 
@@ -81,10 +73,7 @@ export function estimateNetworkCondition(recentErrors: ErrorCategory[] = []): Ne
 }
 
 // Calculate optimal retry delay
-export function calculateRetryDelay(
-  retryCount: number,
-  errorCategory: ErrorCategory
-): number {
+export function calculateRetryDelay(retryCount: number, errorCategory: ErrorCategory): number {
   let baseDelay = Math.min(1000 * Math.pow(2, retryCount), 30000)
   const jitter = Math.random() * 0.3 * baseDelay
   baseDelay = baseDelay + jitter

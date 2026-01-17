@@ -25,9 +25,7 @@ export function parseFolderPath(folderPath: string | undefined): string[] {
 /**
  * Safely create menu item
  */
-async function safeCreateMenuItem(
-  properties: chrome.contextMenus.CreateProperties
-): Promise<boolean> {
+async function safeCreateMenuItem(properties: chrome.contextMenus.CreateProperties): Promise<boolean> {
   return new Promise((resolve) => {
     try {
       chrome.contextMenus.create(properties, () => {
@@ -39,10 +37,7 @@ async function safeCreateMenuItem(
             resolve(true)
             return
           }
-          console.error(
-            `Failed to create menu item ${properties.id}:`,
-            JSON.stringify(chrome.runtime.lastError)
-          )
+          console.error(`Failed to create menu item ${properties.id}:`, JSON.stringify(chrome.runtime.lastError))
           resolve(false)
         } else {
           resolve(true)

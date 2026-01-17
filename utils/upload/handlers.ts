@@ -10,9 +10,7 @@ import { getConfig, AppConfig } from '../storage'
 import { parseFolderPath, ROOT_FOLDER_ID, FOLDER_PREFIX, PARENT_MENU_ID } from '../menu'
 
 // Validate configuration for image upload
-export async function validateConfig(
-  uploadId: string
-): Promise<{ valid: boolean; config?: AppConfig }> {
+export async function validateConfig(uploadId: string): Promise<{ valid: boolean; config?: AppConfig }> {
   console.log('Getting configuration...')
   uploadTaskManager.updateTaskState(uploadId, UploadState.LOADING)
   const config = await getConfig()
@@ -29,21 +27,12 @@ export async function validateConfig(
 }
 
 // Process successful upload
-export async function handleSuccessfulUpload(
-  result: { url: string },
-  uploadId: string
-): Promise<void> {
+export async function handleSuccessfulUpload(result: { url: string }, uploadId: string): Promise<void> {
   try {
     console.log(`Successfully uploaded image: ${result.url}`)
     uploadTaskManager.updateTaskState(uploadId, UploadState.SUCCESS, '')
 
-    await showPageToast(
-      TOAST_STATUS.DONE,
-      'Upload complete!',
-      'success',
-      result.url,
-      uploadId
-    )
+    await showPageToast(TOAST_STATUS.DONE, 'Upload complete!', 'success', result.url, uploadId)
 
     console.log(`Upload task ${uploadId} completed successfully`)
   } catch (error) {
@@ -52,10 +41,7 @@ export async function handleSuccessfulUpload(
 }
 
 // Process failed upload
-export async function handleFailedUpload(
-  errorMessage: string = 'Unknown error',
-  uploadId: string
-): Promise<void> {
+export async function handleFailedUpload(errorMessage: string = 'Unknown error', uploadId: string): Promise<void> {
   try {
     console.error(`Upload failed for task ${uploadId}: ${errorMessage}`)
 
@@ -70,9 +56,7 @@ export async function handleFailedUpload(
     } else if (errorMessage.includes('format') || errorMessage.includes('415')) {
       displayMessage = 'Invalid image format.'
     } else if (errorMessage) {
-      displayMessage = `Error: ${errorMessage.substring(0, 100)}${
-        errorMessage.length > 100 ? '...' : ''
-      }`
+      displayMessage = `Error: ${errorMessage.substring(0, 100)}${errorMessage.length > 100 ? '...' : ''}`
     }
 
     uploadTaskManager.updateTaskState(uploadId, UploadState.ERROR, displayMessage)
@@ -129,11 +113,7 @@ export async function determineTargetFolderWithConfig(
     uploadTaskManager.setTaskFolder(taskId, null)
     return { isValid: true, targetFolder: null }
   } else if (info.menuItemId === PARENT_MENU_ID) {
-    uploadTaskManager.updateTaskState(
-      taskId,
-      UploadState.ERROR,
-      'Parent menu clicked, no action needed'
-    )
+    uploadTaskManager.updateTaskState(taskId, UploadState.ERROR, 'Parent menu clicked, no action needed')
     console.log('Parent menu clicked, no action taken')
     return { isValid: false, targetFolder: null }
   } else {

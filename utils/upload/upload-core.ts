@@ -3,13 +3,7 @@
  */
 
 import { UploadState, uploadTaskManager } from '../state'
-import {
-  ErrorCategory,
-  classifyError,
-  shouldRetry,
-  estimateNetworkCondition,
-  getEnhancedErrorMessage,
-} from './retry'
+import { ErrorCategory, classifyError, shouldRetry, estimateNetworkCondition, getEnhancedErrorMessage } from './retry'
 
 // Fetch image data from URL
 export async function fetchImageData(
@@ -46,10 +40,7 @@ export async function fetchImageData(
     }
 
     const imageBlob = await imageResponse.blob()
-    console.log(
-      'Successfully got image data:',
-      `Type=${imageBlob.type}, Size=${imageBlob.size} bytes`
-    )
+    console.log('Successfully got image data:', `Type=${imageBlob.type}, Size=${imageBlob.size} bytes`)
 
     if (!imageBlob.type.startsWith('image/')) {
       console.warn(`Got data is not image type: ${imageBlob.type}`)
@@ -61,11 +52,7 @@ export async function fetchImageData(
     const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError)
 
     if (errorMessage.includes('abort') || errorMessage.includes('timeout')) {
-      uploadTaskManager.updateTaskState(
-        uploadId,
-        UploadState.ERROR,
-        'Image fetch timed out after 15 seconds.'
-      )
+      uploadTaskManager.updateTaskState(uploadId, UploadState.ERROR, 'Image fetch timed out after 15 seconds.')
       return {
         success: false,
         error: 'Image fetch timed out after 15 seconds.',
@@ -90,9 +77,7 @@ export function createUploadFormData(
     const urlObj = new URL(imageUrlOrFilename)
     const originalFilename = urlObj.pathname.split('/').pop() || ''
     const fileExtension =
-      (originalFilename.includes('.')
-        ? originalFilename.split('.').pop()
-        : imageBlob.type.split('/').pop()) || 'jpg'
+      (originalFilename.includes('.') ? originalFilename.split('.').pop() : imageBlob.type.split('/').pop()) || 'jpg'
 
     const timestamp = Date.now()
     filename = `image_${timestamp}.${fileExtension}`
@@ -183,11 +168,7 @@ export async function uploadImageToServer(
     }
 
     if (errorMessage.includes('abort') || errorMessage.includes('timeout')) {
-      uploadTaskManager.updateTaskState(
-        uploadId,
-        UploadState.ERROR,
-        'Upload timed out. Server might be busy.'
-      )
+      uploadTaskManager.updateTaskState(uploadId, UploadState.ERROR, 'Upload timed out. Server might be busy.')
       return {
         success: false,
         error: `Upload timed out after 30 seconds. Please try again.`,
