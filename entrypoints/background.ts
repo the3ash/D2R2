@@ -2,7 +2,12 @@ import { defineBackground } from 'wxt/utils/define-background'
 import { setupEnhancedLogging } from '../utils/helpers'
 import { extensionStateManager, pageStateManager, uploadTaskManager } from '../utils/state'
 import { UploadState } from '../utils/state/types'
-import { initializeExtension, handleMenuClick, reinitializeForTab, quickInitialize } from '../utils/core'
+import {
+  initializeExtension,
+  handleMenuClick,
+  reinitializeForTab,
+  quickInitialize,
+} from '../utils/core'
 import { showPageToast, showNotification } from '../utils/notifications'
 import { TOAST_STATUS } from '../utils/state/types'
 import { formatWorkerUrl } from '../utils/helpers'
@@ -55,7 +60,13 @@ export default defineBackground(() => {
 
         // Show toast for pending click being processed
         const toastId = `upload_queue_${Date.now()}`
-        showPageToast(TOAST_STATUS.DROPPING, 'Processing queued upload...', 'loading', undefined, toastId)
+        showPageToast(
+          TOAST_STATUS.DROPPING,
+          'Processing queued upload...',
+          'loading',
+          undefined,
+          toastId,
+        )
 
         // handleMenuClick will create its own task ID and manage the upload
         handleMenuClick(info, tab)
@@ -121,7 +132,13 @@ export default defineBackground(() => {
         }
       } catch (error) {
         const errorMessage = handleError(error, 'window focus handling')
-        showPageToast(TOAST_STATUS.FAILED, errorMessage, 'error', undefined, `window_focus_error_${Date.now()}`)
+        showPageToast(
+          TOAST_STATUS.FAILED,
+          errorMessage,
+          'error',
+          undefined,
+          `window_focus_error_${Date.now()}`,
+        )
       }
     }
   })
@@ -165,7 +182,7 @@ export default defineBackground(() => {
             showNotification(
               TOAST_STATUS.FAILED,
               'Worker returned an empty response, please check configuration',
-              'error'
+              'error',
             )
             sendResponse({
               success: false,
@@ -180,7 +197,7 @@ export default defineBackground(() => {
               showNotification(
                 TOAST_STATUS.DONE,
                 `Worker connection normal: ${data.message || 'Connection successful'}`,
-                'success'
+                'success',
               )
               sendResponse({ success: true, data })
             } else {
@@ -192,7 +209,7 @@ export default defineBackground(() => {
             showNotification(
               TOAST_STATUS.DONE,
               'Worker response is not JSON format, but connection succeeded',
-              'success'
+              'success',
             )
             sendResponse({
               success: true,

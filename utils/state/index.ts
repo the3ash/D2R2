@@ -10,7 +10,7 @@ setInterval(
   () => {
     uploadTaskManager.cleanupOldTasks()
   },
-  30 * 60 * 1000
+  30 * 60 * 1000,
 ) // Run every 30 minutes
 
 // Re-export types for convenience

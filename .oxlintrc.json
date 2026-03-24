@@ -1,0 +1,36 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["react", "typescript"],
+  "env": {
+    "browser": true
+  },
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn"
+  },
+  "globals": {
+    "chrome": "readonly"
+  },
+  "rules": {
+    "eslint/no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }
+    ],
+    "react/react-in-jsx-scope": "off",
+    "react/jsx-uses-react": "off",
+    "react/rules-of-hooks": "error",
+    "react/exhaustive-deps": "warn"
+  },
+  "overrides": [
+    {
+      "files": ["wxt.config.ts", "*.config.{js,mjs,cjs,ts,mts}"],
+      "env": {
+        "node": true
+      }
+    }
+  ]
+}

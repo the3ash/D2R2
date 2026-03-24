@@ -1,8 +1,8 @@
 {
   "name": "d2r2",
-  "description": "Drop images to Cloudflare R2",
+  "version": "2.2.1",
   "private": true,
-  "version": "2.2.0",
+  "description": "Drop images to Cloudflare R2",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -12,9 +12,10 @@
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "compile": "tsc --noEmit",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "format": "prettier --write .",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
     "postinstall": "wxt prepare"
   },
   "dependencies": {
@@ -22,17 +23,13 @@
     "react-dom": "^19.2.4"
   },
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
     "@types/chrome": "^0.1.38",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@wxt-dev/module-react": "^1.2.2",
-    "eslint": "^10.0.3",
-    "eslint-config-prettier": "^10.1.8",
-    "globals": "^17.4.0",
-    "prettier": "^3.8.1",
+    "oxfmt": "^0.18.0",
+    "oxlint": "^1.25.0",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.57.1",
     "wxt": "^0.20.20"
   }
 }

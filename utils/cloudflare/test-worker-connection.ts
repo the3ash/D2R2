@@ -2,7 +2,7 @@ export async function testWorkerConnection(
   workerUrl: string,
   cloudflareId: string,
   origin: string,
-  timeoutMs: number = 15000
+  timeoutMs: number = 15000,
 ): Promise<void> {
   const urlObj = new URL(workerUrl)
   urlObj.searchParams.append('cloudflareId', cloudflareId.trim())
@@ -27,7 +27,9 @@ export async function testWorkerConnection(
         console.error('Failed to read response body:', e)
       }
 
-      throw new Error(`Connection failed: ${testResponse.status} ${testResponse.statusText}${errorDetail}`)
+      throw new Error(
+        `Connection failed: ${testResponse.status} ${testResponse.statusText}${errorDetail}`,
+      )
     }
 
     const responseText = await testResponse.text()

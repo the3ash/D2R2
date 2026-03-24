@@ -10,7 +10,9 @@ import { getConfig, AppConfig } from '../storage'
 import { parseFolderPath, ROOT_FOLDER_ID, FOLDER_PREFIX, PARENT_MENU_ID } from '../menu'
 
 // Validate configuration for image upload
-export async function validateConfig(uploadId: string): Promise<{ valid: boolean; config?: AppConfig }> {
+export async function validateConfig(
+  uploadId: string,
+): Promise<{ valid: boolean; config?: AppConfig }> {
   console.log('Getting configuration...')
   uploadTaskManager.updateTaskState(uploadId, UploadState.LOADING)
   const config = await getConfig()
@@ -27,7 +29,10 @@ export async function validateConfig(uploadId: string): Promise<{ valid: boolean
 }
 
 // Process successful upload
-export async function handleSuccessfulUpload(result: { url: string }, uploadId: string): Promise<void> {
+export async function handleSuccessfulUpload(
+  result: { url: string },
+  uploadId: string,
+): Promise<void> {
   try {
     console.log(`Successfully uploaded image: ${result.url}`)
     uploadTaskManager.updateTaskState(uploadId, UploadState.SUCCESS, '')
@@ -41,7 +46,10 @@ export async function handleSuccessfulUpload(result: { url: string }, uploadId: 
 }
 
 // Process failed upload
-export async function handleFailedUpload(errorMessage: string = 'Unknown error', uploadId: string): Promise<void> {
+export async function handleFailedUpload(
+  errorMessage: string = 'Unknown error',
+  uploadId: string,
+): Promise<void> {
   try {
     console.error(`Upload failed for task ${uploadId}: ${errorMessage}`)
 
@@ -89,7 +97,7 @@ export function validateSourceUrl(info: chrome.contextMenus.OnClickData, taskId:
 export async function determineTargetFolderWithConfig(
   info: chrome.contextMenus.OnClickData,
   taskId: string,
-  config: AppConfig
+  config: AppConfig,
 ): Promise<{ isValid: boolean; targetFolder: string | null }> {
   let targetFolder: string | null = null
 
@@ -113,7 +121,11 @@ export async function determineTargetFolderWithConfig(
     uploadTaskManager.setTaskFolder(taskId, null)
     return { isValid: true, targetFolder: null }
   } else if (info.menuItemId === PARENT_MENU_ID) {
-    uploadTaskManager.updateTaskState(taskId, UploadState.ERROR, 'Parent menu clicked, no action needed')
+    uploadTaskManager.updateTaskState(
+      taskId,
+      UploadState.ERROR,
+      'Parent menu clicked, no action needed',
+    )
     console.log('Parent menu clicked, no action taken')
     return { isValid: false, targetFolder: null }
   } else {
@@ -129,7 +141,7 @@ export function logMenuClickDetails(
   info: chrome.contextMenus.OnClickData,
   taskId: string,
   retryCount: number,
-  tab?: chrome.tabs.Tab
+  tab?: chrome.tabs.Tab,
 ): void {
   console.log(`Processing menu click (retry=${retryCount}):`, {
     menuItemId: info.menuItemId,
@@ -150,9 +162,9 @@ export function handleMenuClickError(
   processMenuClickFn: (
     info: chrome.contextMenus.OnClickData,
     tab?: chrome.tabs.Tab,
-    retryCount?: number
+    retryCount?: number,
   ) => Promise<void>,
-  tab?: chrome.tabs.Tab
+  tab?: chrome.tabs.Tab,
 ): void {
   const errorMessage = handleError(error, 'processMenuClick', {
     retryable: retryCount < uploadTaskManager.MAX_RETRY_COUNT,

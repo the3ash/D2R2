@@ -7,7 +7,7 @@
 export function debounce<T extends (...args: Parameters<T>) => ReturnType<T>>(
   func: T,
   wait: number,
-  immediate: boolean = false
+  immediate: boolean = false,
 ): (...args: Parameters<T>) => void {
   let timeout: NodeJS.Timeout | null = null
   let context: unknown = null
@@ -47,7 +47,7 @@ export function throttle<T extends (...args: Parameters<T>) => ReturnType<T>>(
   options: { leading?: boolean; trailing?: boolean } = {
     leading: true,
     trailing: true,
-  }
+  },
 ): (...args: Parameters<T>) => void {
   let lastCall = 0
   let timeout: NodeJS.Timeout | null = null
@@ -92,7 +92,7 @@ export function throttle<T extends (...args: Parameters<T>) => ReturnType<T>>(
  * @param func The function to restrict
  */
 export function once<T extends (...args: Parameters<T>) => ReturnType<T>>(
-  func: T
+  func: T,
 ): (...args: Parameters<T>) => ReturnType<T> | undefined {
   let called = false
   let result: ReturnType<T> | undefined

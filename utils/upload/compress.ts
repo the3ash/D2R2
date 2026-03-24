@@ -1,6 +1,10 @@
 import { UploadState, uploadTaskManager } from '../state'
 
-export async function maybeCompressImageBlob(imageBlob: Blob, quality: number, uploadId: string): Promise<Blob> {
+export async function maybeCompressImageBlob(
+  imageBlob: Blob,
+  quality: number,
+  uploadId: string,
+): Promise<Blob> {
   if (!Number.isFinite(quality) || quality <= 0) return imageBlob
 
   const rawContentType = imageBlob.type || ''
@@ -51,12 +55,14 @@ export async function maybeCompressImageBlob(imageBlob: Blob, quality: number, u
       })
 
       if (compressed.size > 0 && compressed.size < imageBlob.size) {
-        console.log(`Compressed ${contentType}: ${imageBlob.size} -> ${compressed.size} bytes (q=${clampedQuality})`)
+        console.log(
+          `Compressed ${contentType}: ${imageBlob.size} -> ${compressed.size} bytes (q=${clampedQuality})`,
+        )
         return compressed
       }
 
       console.log(
-        `Image compression skipped: output not smaller (${imageBlob.size} -> ${compressed.size} bytes, q=${clampedQuality})`
+        `Image compression skipped: output not smaller (${imageBlob.size} -> ${compressed.size} bytes, q=${clampedQuality})`,
       )
       return imageBlob
     } finally {

@@ -27,7 +27,7 @@ export async function uploadImage(
   info: chrome.contextMenus.OnClickData,
   uploadId: string,
   targetFolder: string | null = null,
-  tabId?: number
+  tabId?: number,
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   console.log(`[Upload][${uploadId}] Starting upload to ${targetFolder || 'root'}`)
 
@@ -63,18 +63,27 @@ export async function uploadImage(
     }
 
     console.log(
-      `[Upload][${uploadId}] Fetched: ${imageResult.imageBlob.size} bytes, type: ${imageResult.imageBlob.type}`
+      `[Upload][${uploadId}] Fetched: ${imageResult.imageBlob.size} bytes, type: ${imageResult.imageBlob.type}`,
     )
 
     // Stage 2: Compress if needed
     await updateUploadProgress(uploadId, 'compressing', tabId)
-    const uploadBlob = await maybeCompressImageBlob(imageResult.imageBlob, config.imageQuality ?? 0, uploadId)
+    const uploadBlob = await maybeCompressImageBlob(
+      imageResult.imageBlob,
+      config.imageQuality ?? 0,
+      uploadId,
+    )
 
     // Stage 3: Upload to server
     await updateUploadProgress(uploadId, 'uploading', tabId)
     console.log(`[Upload][${uploadId}] Uploading to: ${formattedWorkerUrl}`)
 
-    const { formData } = createUploadFormData(uploadBlob, info.srcUrl, config.cloudflareId, targetFolder)
+    const { formData } = createUploadFormData(
+      uploadBlob,
+      info.srcUrl,
+      config.cloudflareId,
+      targetFolder,
+    )
 
     const uploadResult = await uploadImageWithRetry(formData, formattedWorkerUrl, uploadId)
 

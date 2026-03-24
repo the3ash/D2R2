@@ -21,7 +21,7 @@ function createFormData(
   cloudflareId: string,
   folderName: string | null,
   file: File | Blob,
-  fileName?: string
+  fileName?: string,
 ): FormData {
   const formData = new FormData()
   formData.append('file', file, fileName)
@@ -40,7 +40,7 @@ export async function uploadImageBlob(
   cloudflareId: string,
   folderName: string | null,
   imageBlob: Blob,
-  fileName: string
+  fileName: string,
 ): Promise<UploadResponse> {
   try {
     const formData = createFormData(cloudflareId, folderName, imageBlob, fileName)

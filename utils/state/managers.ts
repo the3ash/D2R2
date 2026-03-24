@@ -11,8 +11,6 @@ export class ExtensionStateManager {
   readonly MIN_INIT_INTERVAL: number = 500 // ms
   readonly INIT_CHECK_INTERVAL: number = 300 // ms
 
-  constructor() {}
-
   public getState(): ExtensionState {
     return this.state
   }
@@ -88,9 +86,10 @@ export class UploadTaskManager {
   readonly RETRY_INTERVAL: number = 500 // ms
   readonly MENU_CLICK_COOLDOWN: number = 300 // ms
 
-  constructor() {}
-
-  public createTask(info: chrome.contextMenus.OnClickData, tabOrFolder?: chrome.tabs.Tab | string | null): string {
+  public createTask(
+    info: chrome.contextMenus.OnClickData,
+    tabOrFolder?: chrome.tabs.Tab | string | null,
+  ): string {
     // Generate a unique task ID
     const taskId = `upload_${Date.now()}`
 
@@ -247,8 +246,6 @@ export class PageStateManager {
     tab?: chrome.tabs.Tab
     timestamp: number
   }> = []
-
-  constructor() {}
 
   public setActiveTab(tabId: number | null, url?: string | null) {
     this.activeTabId = tabId

@@ -107,17 +107,17 @@ export default defineContentScript({
     let currentUploadTimeoutId: number | null = null
     let currentUploadLastActivity: number | null = null
     let heartbeatIntervalId: number | null = null
-    let toastId: string | null = null
+    let activeToastId: string | null = null
 
     // Toast timeout constants
     const TOAST_ACTIVITY_TIMEOUT = 60000 // 60 seconds without activity before removing toast
     const TOAST_HEARTBEAT_CHECK_INTERVAL = 10000 // Check every 10 seconds
 
     // Helper function to create toast element
-    const createToastElement = (type: string, toastId: string) => {
+    const createToastElement = (type: string, toastIdentifier: string) => {
       const toast = document.createElement('div')
       toast.className = `d2r2-toast d2r2-toast-${type}`
-      toast.dataset.toastId = toastId
+      toast.dataset.toastId = toastIdentifier
       // Use inline styles to control initial position
       toast.style.transform = 'translateY(-20px)'
       toast.style.opacity = '0'
@@ -172,7 +172,7 @@ export default defineContentScript({
       message: string,
       type: 'success' | 'error' | 'info' | 'loading' = 'info',
       imageUrl?: string,
-      toastId?: string
+      targetToastId?: string,
     ) => {
       // Map title based on type, but if title is provided and not empty, use it directly
       const displayTitle =
@@ -187,12 +187,14 @@ export default defineContentScript({
                 : title
 
       // If showing an error or success toast, find and update any existing toast with the same ID
-      if ((type === 'error' || type === 'success') && toastId) {
+      if ((type === 'error' || type === 'success') && targetToastId) {
         // First try to find any toast with matching ID (not just loading type)
-        const existingToast = document.querySelector(`.d2r2-toast[data-toast-id="${toastId}"]`) as HTMLElement | null
+        const existingToast = document.querySelector(
+          `.d2r2-toast[data-toast-id="${targetToastId}"]`,
+        ) as HTMLElement | null
 
         if (existingToast) {
-          log(`Found existing toast with ID ${toastId}, updating to ${type}`)
+          log(`Found existing toast with ID ${targetToastId}, updating to ${type}`)
 
           // Update the toast type and content
           existingToast.className = `d2r2-toast d2r2-toast-${type}`
@@ -219,8 +221,12 @@ export default defineContentScript({
         }
       }
 
-      // If toastId is provided and matches current upload toast ID, update existing toast
-      if (toastId && currentUploadToast && currentUploadToast.dataset.toastId === toastId) {
+      // If a target toast ID is provided and matches current upload toast ID, update existing toast
+      if (
+        targetToastId &&
+        currentUploadToast &&
+        currentUploadToast.dataset.toastId === targetToastId
+      ) {
         if (currentUploadTimeoutId !== null) {
           clearTimeout(currentUploadTimeoutId)
           currentUploadTimeoutId = null
@@ -246,10 +252,10 @@ export default defineContentScript({
       }
 
       // Create new toast
-      const newToastId = toastId || `toast_${Date.now()}`
+      const newToastId = targetToastId || `toast_${Date.now()}`
       const toast = createToastElement(type, newToastId)
 
-      if (type === 'loading' && toastId) {
+      if (type === 'loading' && targetToastId) {
         if (currentUploadToast) {
           currentUploadToast.remove()
           if (currentUploadTimeoutId !== null) {
@@ -266,7 +272,10 @@ export default defineContentScript({
         }
 
         heartbeatIntervalId = window.setInterval(() => {
-          if (currentUploadLastActivity && Date.now() - currentUploadLastActivity > TOAST_ACTIVITY_TIMEOUT) {
+          if (
+            currentUploadLastActivity &&
+            Date.now() - currentUploadLastActivity > TOAST_ACTIVITY_TIMEOUT
+          ) {
             // If no activity for 60 seconds, assume the upload is lost and remove toast
             log('No upload activity detected for 60 seconds, removing toast')
             if (currentUploadToast) {
@@ -334,7 +343,7 @@ export default defineContentScript({
       (
         message: { action: string; data?: Record<string, unknown>; toastId?: string },
         _sender: chrome.runtime.MessageSender,
-        sendResponse: (response?: { success: boolean; error?: string; loaded?: boolean }) => void
+        sendResponse: (response?: { success: boolean; error?: string; loaded?: boolean }) => void,
       ) => {
         log('Content script received message:', message)
 
@@ -353,10 +362,10 @@ export default defineContentScript({
 
           // Store toastId for visibility change handling
           if (type === 'loading' && msgToastId) {
-            toastId = msgToastId
-          } else if (type !== 'loading' && toastId === msgToastId) {
-            // Clear toastId when the upload completes
-            toastId = null
+            activeToastId = msgToastId
+          } else if (type !== 'loading' && activeToastId === msgToastId) {
+            // Clear toast ID when the upload completes
+            activeToastId = null
           }
 
           try {
@@ -374,7 +383,7 @@ export default defineContentScript({
           return true
         } else if (message.action === 'heartbeat') {
           // Handle heartbeat messages to maintain upload toast
-          if (message.toastId && message.toastId === toastId && currentUploadToast) {
+          if (message.toastId && message.toastId === activeToastId && currentUploadToast) {
             log('Received heartbeat for toast:', message.toastId)
             currentUploadLastActivity = Date.now()
           } else {
@@ -390,7 +399,7 @@ export default defineContentScript({
 
         // Return true for any unhandled messages to indicate async response
         return true
-      }
+      },
     )
   },
 })

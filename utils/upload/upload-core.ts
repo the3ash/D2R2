@@ -3,12 +3,18 @@
  */
 
 import { UploadState, uploadTaskManager } from '../state'
-import { ErrorCategory, classifyError, shouldRetry, estimateNetworkCondition, getEnhancedErrorMessage } from './retry'
+import {
+  ErrorCategory,
+  classifyError,
+  shouldRetry,
+  estimateNetworkCondition,
+  getEnhancedErrorMessage,
+} from './retry'
 
 // Fetch image data from URL
 export async function fetchImageData(
   imageUrl: string,
-  uploadId: string
+  uploadId: string,
 ): Promise<{ success: boolean; imageBlob?: Blob; error?: string }> {
   console.log('Starting to directly get image data from browser...')
   uploadTaskManager.updateTaskState(uploadId, UploadState.FETCHING)
@@ -40,7 +46,10 @@ export async function fetchImageData(
     }
 
     const imageBlob = await imageResponse.blob()
-    console.log('Successfully got image data:', `Type=${imageBlob.type}, Size=${imageBlob.size} bytes`)
+    console.log(
+      'Successfully got image data:',
+      `Type=${imageBlob.type}, Size=${imageBlob.size} bytes`,
+    )
 
     if (!imageBlob.type.startsWith('image/')) {
       console.warn(`Got data is not image type: ${imageBlob.type}`)
@@ -52,7 +61,11 @@ export async function fetchImageData(
     const errorMessage = fetchError instanceof Error ? fetchError.message : String(fetchError)
 
     if (errorMessage.includes('abort') || errorMessage.includes('timeout')) {
-      uploadTaskManager.updateTaskState(uploadId, UploadState.ERROR, 'Image fetch timed out after 15 seconds.')
+      uploadTaskManager.updateTaskState(
+        uploadId,
+        UploadState.ERROR,
+        'Image fetch timed out after 15 seconds.',
+      )
       return {
         success: false,
         error: 'Image fetch timed out after 15 seconds.',
@@ -69,7 +82,7 @@ export function createUploadFormData(
   imageBlob: Blob,
   imageUrlOrFilename: string,
   cloudflareId: string,
-  folderPath: string | null
+  folderPath: string | null,
 ): { formData: FormData; filename: string } {
   let filename: string
 
@@ -77,7 +90,9 @@ export function createUploadFormData(
     const urlObj = new URL(imageUrlOrFilename)
     const originalFilename = urlObj.pathname.split('/').pop() || ''
     const fileExtension =
-      (originalFilename.includes('.') ? originalFilename.split('.').pop() : imageBlob.type.split('/').pop()) || 'jpg'
+      (originalFilename.includes('.')
+        ? originalFilename.split('.').pop()
+        : imageBlob.type.split('/').pop()) || 'jpg'
 
     const timestamp = Date.now()
     filename = `image_${timestamp}.${fileExtension}`
@@ -100,7 +115,7 @@ export function createUploadFormData(
 export async function uploadImageToServer(
   formData: FormData,
   workerUrl: string,
-  uploadId: string
+  uploadId: string,
 ): Promise<{
   success: boolean
   result?: { success: boolean; url?: string; error?: string }
@@ -155,7 +170,7 @@ export async function uploadImageToServer(
         }
       }
 
-      throw new Error('Response format error')
+      throw new Error('Response format error', { cause: parseError })
     }
   } catch (error) {
     console.error('Error handling response:', error)
@@ -168,7 +183,11 @@ export async function uploadImageToServer(
     }
 
     if (errorMessage.includes('abort') || errorMessage.includes('timeout')) {
-      uploadTaskManager.updateTaskState(uploadId, UploadState.ERROR, 'Upload timed out. Server might be busy.')
+      uploadTaskManager.updateTaskState(
+        uploadId,
+        UploadState.ERROR,
+        'Upload timed out. Server might be busy.',
+      )
       return {
         success: false,
         error: `Upload timed out after 30 seconds. Please try again.`,
@@ -190,8 +209,12 @@ export async function uploadImageWithRetry(
   formData: FormData,
   workerUrl: string,
   uploadId: string,
-  maxRetries = 3
-): Promise<{ success: boolean; result?: { success: boolean; url?: string; error?: string }; error?: string }> {
+  maxRetries = 3,
+): Promise<{
+  success: boolean
+  result?: { success: boolean; url?: string; error?: string }
+  error?: string
+}> {
   let retryCount = 0
   let lastError: string | undefined
   let lastStatus: number | undefined
@@ -213,7 +236,7 @@ export async function uploadImageWithRetry(
         uploadTaskManager.updateTaskState(
           uploadId,
           UploadState.UPLOADING,
-          `Retry #${retryCount}... (${retryDecision.reason})`
+          `Retry #${retryCount}... (${retryDecision.reason})`,
         )
 
         console.log(`Waiting ${retryDecision.delay}ms before retry...`)

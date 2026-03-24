@@ -4,7 +4,13 @@ import { showNotification, showPageToast } from '../notifications'
 import { uploadImage } from '../upload'
 import { quickInitialize, performInitialization } from './initialization'
 import { handleError } from '../helpers'
-import { updateContextMenu, parseFolderPath, ROOT_FOLDER_ID, FOLDER_PREFIX, PARENT_MENU_ID } from '../menu'
+import {
+  updateContextMenu,
+  parseFolderPath,
+  ROOT_FOLDER_ID,
+  FOLDER_PREFIX,
+  PARENT_MENU_ID,
+} from '../menu'
 import { getConfig } from '../storage'
 
 /**
@@ -12,7 +18,7 @@ import { getConfig } from '../storage'
  */
 function determineTargetFolder(
   menuItemId: string | number,
-  folders: string[]
+  folders: string[],
 ): { valid: boolean; folder: string | null; error?: string } {
   const menuId = String(menuItemId)
 
@@ -39,7 +45,10 @@ function determineTargetFolder(
 /**
  * Main menu click handler - unified entry point for all uploads
  */
-export async function handleMenuClick(info: chrome.contextMenus.OnClickData, tab?: chrome.tabs.Tab) {
+export async function handleMenuClick(
+  info: chrome.contextMenus.OnClickData,
+  tab?: chrome.tabs.Tab,
+) {
   try {
     console.log('======= MENU CLICK START =======')
     console.log('Menu data:', {
@@ -72,7 +81,13 @@ export async function handleMenuClick(info: chrome.contextMenus.OnClickData, tab
         return
       }
       console.error(`Folder determination failed: ${folderResult.error}`)
-      await showPageToast(TOAST_STATUS.FAILED, folderResult.error || 'Invalid selection', 'error', undefined, uploadId)
+      await showPageToast(
+        TOAST_STATUS.FAILED,
+        folderResult.error || 'Invalid selection',
+        'error',
+        undefined,
+        uploadId,
+      )
       return
     }
 
@@ -85,7 +100,7 @@ export async function handleMenuClick(info: chrome.contextMenus.OnClickData, tab
       `Uploading to ${folderResult.folder || 'root'}...`,
       'loading',
       undefined,
-      uploadId
+      uploadId,
     )
 
     // Update active tab information
@@ -119,7 +134,13 @@ export async function handleMenuClick(info: chrome.contextMenus.OnClickData, tab
     // Show error notification
     try {
       showNotification(TOAST_STATUS.FAILED, errorMessage, 'error')
-      await showPageToast(TOAST_STATUS.FAILED, errorMessage, 'error', undefined, `error_${Date.now()}`)
+      await showPageToast(
+        TOAST_STATUS.FAILED,
+        errorMessage,
+        'error',
+        undefined,
+        `error_${Date.now()}`,
+      )
     } catch (notificationError) {
       console.error('Failed to show error notification:', notificationError)
     }
@@ -136,13 +157,13 @@ export async function initializeExtension() {
     console.log('Starting extension initialization...')
 
     // Get current active tab
-    const tabs = await chrome.tabs.query({
+    const activeTabs = await chrome.tabs.query({
       active: true,
       currentWindow: true,
     })
-    if (tabs && tabs[0]?.id) {
-      pageStateManager.setActiveTab(tabs[0].id, tabs[0].url)
-      console.log(`Initializing for active tab ${tabs[0].id}`)
+    if (activeTabs && activeTabs[0]?.id) {
+      pageStateManager.setActiveTab(activeTabs[0].id, activeTabs[0].url)
+      console.log(`Initializing for active tab ${activeTabs[0].id}`)
     }
 
     // Core initialization
@@ -173,13 +194,13 @@ export async function initializeExtension() {
           try {
             console.log('Testing page toast notification...')
             // Get current active tab
-            const tabs = await chrome.tabs.query({
+            const visibleTabs = await chrome.tabs.query({
               active: true,
               currentWindow: true,
             })
-            if (tabs && tabs.length > 0 && tabs[0].id) {
+            if (visibleTabs && visibleTabs.length > 0 && visibleTabs[0].id) {
               // Check if current tab can be injected
-              const tabId = tabs[0].id as number
+              const tabId = visibleTabs[0].id as number
               console.log(`Attempting to send test toast to tab ${tabId}`)
 
               // First check if content script is ready
@@ -187,7 +208,10 @@ export async function initializeExtension() {
                 chrome.tabs.sendMessage(tabId, { action: 'ping' }, () => {
                   const hasError = chrome.runtime.lastError
                   if (hasError) {
-                    console.log('Content script not responding, may be new page or not loaded: ', hasError)
+                    console.log(
+                      'Content script not responding, may be new page or not loaded: ',
+                      hasError,
+                    )
                     // Don't proceed with test, this is normal for new tabs
                   } else {
                     // Content script is ready, send test notification

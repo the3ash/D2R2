@@ -65,7 +65,7 @@ export default function App() {
         await testWorkerConnection(workerUrl, config.cloudflareId.trim(), location.origin)
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {
-          throw new Error('Connection timeout, try again')
+          throw new Error('Connection timeout, try again', { cause: err })
         }
         throw err
       }
@@ -76,7 +76,7 @@ export default function App() {
       setError(
         err instanceof Error && err.name === 'AbortError'
           ? 'Connection timeout, try again'
-          : 'Connection failed, try again or change settings'
+          : 'Connection failed, try again or change settings',
       )
       console.error(err)
       setTimeout(() => setError(null), 3000)

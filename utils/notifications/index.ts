@@ -80,7 +80,7 @@ class NotificationManager {
       showPage?: boolean
       direction?: ToastDirection
       forceShow?: boolean
-    } = {}
+    } = {},
   ): string {
     const {
       imageUrl,
@@ -110,7 +110,9 @@ class NotificationManager {
 
       // Replace notification in queue
       this.queue[existingIndex] = updatedNotification
-      console.log(`Updated notification: ${id}, type: ${type}, message: ${message.substring(0, 30)}...`)
+      console.log(
+        `Updated notification: ${id}, type: ${type}, message: ${message.substring(0, 30)}...`,
+      )
 
       return id
     } else {
@@ -138,7 +140,7 @@ class NotificationManager {
       showPage?: boolean
       id?: string
       direction?: ToastDirection
-    } = {}
+    } = {},
   ): string {
     const {
       imageUrl,
@@ -162,7 +164,9 @@ class NotificationManager {
       }
 
       // Remove all unprocessed loading notifications from the queue
-      const loadingNotifications = this.queue.filter((item) => item.type === 'loading' && !item.processed)
+      const loadingNotifications = this.queue.filter(
+        (item) => item.type === 'loading' && !item.processed,
+      )
 
       if (loadingNotifications.length > 0) {
         loadingNotifications.forEach((item) => {
@@ -176,13 +180,16 @@ class NotificationManager {
     } else if (type !== 'loading' && this.activeLoadingId) {
       // If it's not a loading type and there's an active loading ID, reset it
       // It could be a success or error notification
-      console.log(`Resetting active loading ID ${this.activeLoadingId} for new ${type} notification`)
+      console.log(
+        `Resetting active loading ID ${this.activeLoadingId} for new ${type} notification`,
+      )
       this.activeLoadingId = null
     }
 
     // Check if a similar notification is already in the queue - also check type
     const similarNotification = this.queue.find(
-      (item) => item.title === title && item.message === message && item.type === type && !item.processed
+      (item) =>
+        item.title === title && item.message === message && item.type === type && !item.processed,
     )
 
     if (similarNotification) {
@@ -221,7 +228,9 @@ class NotificationManager {
 
     // Add to queue
     this.queue.push(notification)
-    console.log(`Added notification to queue: ${id}, type: ${type}, queue length: ${this.queue.length}`)
+    console.log(
+      `Added notification to queue: ${id}, type: ${type}, queue length: ${this.queue.length}`,
+    )
 
     return id
   }
@@ -295,7 +304,7 @@ class NotificationManager {
     message: string,
     type: NotificationType,
     direction: ToastDirection,
-    imageUrl?: string
+    imageUrl?: string,
   ): Promise<void> {
     try {
       // Get current active tab
@@ -310,7 +319,9 @@ class NotificationManager {
       }
 
       const activeTab = tabs[0]
-      console.log(`[Toast][${id}] ${title}: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`)
+      console.log(
+        `[Toast][${id}] ${title}: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`,
+      )
 
       // Check tab URL to ensure it's not on a special page
       if (
@@ -345,7 +356,7 @@ class NotificationManager {
             if (hasError) {
               console.log(
                 `[Toast][${id}] Toast message may have failed (normal if page doesn't allow injection):`,
-                hasError
+                hasError,
               )
               resolve()
               return
@@ -354,13 +365,18 @@ class NotificationManager {
             if (response && response.success) {
               console.log(`[Toast][${id}] Toast displayed on page`)
             } else if (response) {
-              console.error(`[Toast][${id}] Toast display failed:`, response.error || 'Unknown reason')
+              console.error(
+                `[Toast][${id}] Toast display failed:`,
+                response.error || 'Unknown reason',
+              )
             } else {
-              console.log(`[Toast][${id}] No toast response received (content script may not be loaded)`)
+              console.log(
+                `[Toast][${id}] No toast response received (content script may not be loaded)`,
+              )
             }
 
             resolve()
-          }
+          },
         )
       })
     } catch (error) {
@@ -375,14 +391,14 @@ class NotificationManager {
     id: string,
     title: string,
     message: string,
-    imageUrl?: string
+    imageUrl?: string,
   ): Promise<void> {
     return new Promise<void>((resolve) => {
       try {
         console.log(
           `[System][${id}] ${title}: ${message.substring(0, 50)}${
             message.length > 50 ? '...' : ''
-          }${imageUrl ? ` (URL: ${imageUrl})` : ''}`
+          }${imageUrl ? ` (URL: ${imageUrl})` : ''}`,
         )
 
         // Ensure there's notification permission
@@ -425,7 +441,10 @@ class NotificationManager {
             },
             (createdId) => {
               if (chrome.runtime.lastError) {
-                console.error(`[System][${id}] Notification creation failed:`, chrome.runtime.lastError)
+                console.error(
+                  `[System][${id}] Notification creation failed:`,
+                  chrome.runtime.lastError,
+                )
                 // If creation fails, remove listener
                 if (imageUrl) {
                   chrome.notifications.onClicked.removeListener(handleNotificationClick)
@@ -434,7 +453,7 @@ class NotificationManager {
                 console.log(`[System][${id}] Notification created successfully, ID: ${createdId}`)
               }
               resolve()
-            }
+            },
           )
         })
       } catch (error) {
@@ -463,7 +482,7 @@ setInterval(
   () => {
     NotificationManager.getInstance().cleanupOldNotifications()
   },
-  5 * 60 * 1000
+  5 * 60 * 1000,
 )
 
 /**
@@ -472,7 +491,7 @@ setInterval(
  */
 export function showProcessingNotification(
   info: chrome.contextMenus.OnClickData,
-  message: string = 'Processing image'
+  message: string = 'Processing image',
 ): string {
   // Get notification manager instance
   const manager = NotificationManager.getInstance()
@@ -511,7 +530,7 @@ export function showNotification(
     showPage?: boolean
     id?: string
     direction?: ToastDirection
-  } = {}
+  } = {},
 ): string {
   // Ensure type is correct
   let notificationType: NotificationType = 'info'
@@ -526,7 +545,12 @@ export function showNotification(
   }
 
   // Add to notification queue
-  return NotificationManager.getInstance().addNotification(title, message, notificationType, options)
+  return NotificationManager.getInstance().addNotification(
+    title,
+    message,
+    notificationType,
+    options,
+  )
 }
 
 /**
@@ -539,7 +563,7 @@ export async function showPageToast(
   message: string,
   type: NotificationType | string,
   imageUrl?: string,
-  toastId?: string
+  toastId?: string,
 ): Promise<string> {
   const manager = NotificationManager.getInstance()
   const activeId = manager.getActiveLoadingId()
@@ -561,22 +585,29 @@ export async function showPageToast(
   // For successful or failed notifications with a toastId, notify background
   if (
     toastId &&
-    (type === 'success' || type === TOAST_STATUS.DONE || type === 'error' || type === TOAST_STATUS.FAILED)
+    (type === 'success' ||
+      type === TOAST_STATUS.DONE ||
+      type === 'error' ||
+      type === TOAST_STATUS.FAILED)
   ) {
     try {
       // Notify background script that upload has completed or failed
       chrome.runtime.sendMessage(
         {
-          action: type === 'success' || type === TOAST_STATUS.DONE ? 'uploadSuccess' : 'uploadFailed',
+          action:
+            type === 'success' || type === TOAST_STATUS.DONE ? 'uploadSuccess' : 'uploadFailed',
           toastId,
         },
         // Add callback function to handle errors
         () => {
           const error = chrome.runtime.lastError
           if (error) {
-            console.warn('Expected error when notifying background (can be ignored):', error.message)
+            console.warn(
+              'Expected error when notifying background (can be ignored):',
+              error.message,
+            )
           }
-        }
+        },
       )
     } catch (error) {
       console.warn('Failed to notify background about upload completion (can be ignored):', error)

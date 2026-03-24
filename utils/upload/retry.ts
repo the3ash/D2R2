@@ -34,11 +34,19 @@ export function classifyError(error: Error | string, status?: number): ErrorCate
     return ErrorCategory.TEMPORARY
   }
 
-  if (errorMessage.includes('timeout') || errorMessage.includes('abort') || errorMessage.includes('timed out')) {
+  if (
+    errorMessage.includes('timeout') ||
+    errorMessage.includes('abort') ||
+    errorMessage.includes('timed out')
+  ) {
     return ErrorCategory.TIMEOUT
   }
 
-  if (errorMessage.includes('rate limit') || errorMessage.includes('too many requests') || status === 429) {
+  if (
+    errorMessage.includes('rate limit') ||
+    errorMessage.includes('too many requests') ||
+    status === 429
+  ) {
     return ErrorCategory.RATE_LIMIT
   }
 
@@ -97,7 +105,7 @@ export function shouldRetry(
   error: Error | string,
   retryCount: number,
   maxRetries: number,
-  responseStatus?: number
+  responseStatus?: number,
 ): { retry: boolean; delay: number; reason: string } {
   if (retryCount >= maxRetries) {
     return {
@@ -138,7 +146,7 @@ export function getEnhancedErrorMessage(
   retryCount: number,
   maxRetries: number,
   networkCondition: NetworkCondition,
-  status?: number
+  status?: number,
 ): string {
   if (!errorMessage) return 'Unknown upload error'
 

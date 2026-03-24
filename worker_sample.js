@@ -67,7 +67,7 @@ function errorResponse(message, status = 400, origin = '*') {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': origin,
       },
-    }
+    },
   )
 }
 
@@ -92,7 +92,9 @@ async function handleTestConnectionRequest(request, env) {
   try {
     const url = new URL(request.url)
     const cloudflareId = url.searchParams.get('cloudflareId')
-    const isValidId = cloudflareId ? isValidCloudflareId(cloudflareId, env.ALLOWED_CLOUDFLARE_ID) : false
+    const isValidId = cloudflareId
+      ? isValidCloudflareId(cloudflareId, env.ALLOWED_CLOUDFLARE_ID)
+      : false
 
     const responseData = {
       success: true,
@@ -133,7 +135,7 @@ async function handleFileRequest(request, env) {
       return errorResponse(
         `File too large. Maximum size is 20MB, received ${Math.round(contentLength / 1024 / 1024)}MB`,
         413,
-        origin
+        origin,
       )
     }
 
@@ -158,7 +160,7 @@ async function handleFileRequest(request, env) {
       return errorResponse(
         `File too large. Maximum size is 20MB, received ${Math.round(file.size / 1024 / 1024)}MB`,
         413,
-        origin
+        origin,
       )
     }
 
@@ -167,7 +169,11 @@ async function handleFileRequest(request, env) {
     const formatValidation = validateImageFormat(fileBuffer)
 
     if (!formatValidation.valid) {
-      return errorResponse('Invalid file format. Only JPEG, PNG, GIF, WebP, and BMP images are allowed', 415, origin)
+      return errorResponse(
+        'Invalid file format. Only JPEG, PNG, GIF, WebP, and BMP images are allowed',
+        415,
+        origin,
+      )
     }
 
     // Generate storage path
@@ -201,7 +207,7 @@ async function handleFileRequest(request, env) {
           'Content-Type': 'application/json',
           'Access-Control-Allow-Origin': origin,
         },
-      }
+      },
     )
   } catch (error) {
     console.error('File upload error:', error)
@@ -215,7 +221,11 @@ export default {
     // Check required environment variable
     if (!env.ALLOWED_CLOUDFLARE_ID) {
       console.error('ALLOWED_CLOUDFLARE_ID not configured')
-      return errorResponse('Server configuration error: Missing required security configuration', 500, '*')
+      return errorResponse(
+        'Server configuration error: Missing required security configuration',
+        500,
+        '*',
+      )
     }
 
     // Handle CORS preflight
@@ -236,7 +246,10 @@ export default {
         return handleFileRequest(request, env)
       }
 
-      return errorResponse('Unsupported content type. Use multipart/form-data for file uploads', 415)
+      return errorResponse(
+        'Unsupported content type. Use multipart/form-data for file uploads',
+        415,
+      )
     }
 
     return errorResponse('Method not allowed', 405)

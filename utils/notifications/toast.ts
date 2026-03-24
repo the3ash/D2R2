@@ -7,7 +7,7 @@ export async function showPageToast(
   message: string,
   type: ToastType = 'info',
   imageUrl?: string,
-  toastId?: string
+  toastId?: string,
 ) {
   try {
     // Get current active tab
@@ -22,7 +22,7 @@ export async function showPageToast(
 
     const activeTab = tabs[0]
     console.log(
-      `[Toast][${toastId || 'unknown'}] ${title}: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`
+      `[Toast][${toastId || 'unknown'}] ${title}: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`,
     )
 
     // Check tab URL to ensure not on chrome:// etc.
@@ -48,7 +48,10 @@ export async function showPageToast(
         // Check for errors but don't block execution
         const hasError = chrome.runtime.lastError
         if (hasError) {
-          console.log("Toast message may have failed (this is normal if page doesn't allow injection):", hasError)
+          console.log(
+            "Toast message may have failed (this is normal if page doesn't allow injection):",
+            hasError,
+          )
           return
         }
 
@@ -59,7 +62,7 @@ export async function showPageToast(
         } else {
           console.log('No toast response received (content script may not be loaded)')
         }
-      }
+      },
     )
   } catch (error) {
     console.error('Error showing page toast:', error)
@@ -70,14 +73,15 @@ export async function showPageToast(
 export function showNotification(title: string, message: string, imageUrl?: string) {
   try {
     // Also try to show toast on page
-    const toastType = title === TOAST_STATUS.DONE ? 'success' : title === TOAST_STATUS.FAILED ? 'error' : 'loading'
+    const toastType =
+      title === TOAST_STATUS.DONE ? 'success' : title === TOAST_STATUS.FAILED ? 'error' : 'loading'
     const notificationId = `d2r2_${Date.now()}`
     showPageToast(title, message, toastType, imageUrl, notificationId)
 
     console.log(
       `[Notification] ${title}: ${message.substring(0, 50)}${
         message.length > 50 ? '...' : ''
-      }${imageUrl ? ` (URL: ${imageUrl})` : ''}`
+      }${imageUrl ? ` (URL: ${imageUrl})` : ''}`,
     )
 
     // Ensure notification permission
@@ -91,7 +95,9 @@ export function showNotification(title: string, message: string, imageUrl?: stri
 
       // Remove sameID click listener
       const handleNotificationClick = (clickedId: string) => {
-        console.log(`Notification click event triggered, clicked ID: ${clickedId}, expected ID: ${notificationId}`)
+        console.log(
+          `Notification click event triggered, clicked ID: ${clickedId}, expected ID: ${notificationId}`,
+        )
         if (clickedId === notificationId && imageUrl) {
           console.log(`Notification clicked, opening URL: ${imageUrl}`)
           chrome.tabs.create({ url: imageUrl })
@@ -132,7 +138,7 @@ export function showNotification(title: string, message: string, imageUrl?: stri
           } else {
             console.log(`Notification created successfully, ID: ${createdId}`)
           }
-        }
+        },
       )
     })
   } catch (error) {

@@ -45,13 +45,20 @@ export async function quickInitialize(): Promise<boolean> {
     if (pageStateManager.getActiveTab()) {
       try {
         // Non-blocking ping to content script
-        chrome.tabs.sendMessage(pageStateManager.getActiveTab() as number, { action: 'ping' }, () => {
-          if (chrome.runtime.lastError) {
-            console.log('Content script not ready in active tab:', chrome.runtime.lastError.message)
-          } else {
-            console.log('Content script is ready in active tab')
-          }
-        })
+        chrome.tabs.sendMessage(
+          pageStateManager.getActiveTab() as number,
+          { action: 'ping' },
+          () => {
+            if (chrome.runtime.lastError) {
+              console.log(
+                'Content script not ready in active tab:',
+                chrome.runtime.lastError.message,
+              )
+            } else {
+              console.log('Content script is ready in active tab')
+            }
+          },
+        )
       } catch (e) {
         console.log('Error checking content script (non-critical):', e)
       }
@@ -98,11 +105,15 @@ export async function reinitializeForTab(tabId: number) {
     }
 
     // Set initialization flag
-    console.log(`Extension reinitialized for tab ${tabId}, content script ready: ${contentScriptReady}`)
+    console.log(
+      `Extension reinitialized for tab ${tabId}, content script ready: ${contentScriptReady}`,
+    )
 
     // Process any pending clicks
     if (pageStateManager.hasPendingMenuClicks()) {
-      console.log(`Processing ${pageStateManager.getPendingClicksCount()} pending clicks after reinitialization`)
+      console.log(
+        `Processing ${pageStateManager.getPendingClicksCount()} pending clicks after reinitialization`,
+      )
     }
   } catch (error) {
     console.error(`Error reinitializing tab ${tabId}:`, error)
