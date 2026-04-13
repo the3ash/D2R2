@@ -20,8 +20,8 @@
         "caughtErrorsIgnorePattern": "^_"
       }
     ],
+    "typescript/no-explicit-any": "warn",
     "react/react-in-jsx-scope": "off",
-    "react/jsx-uses-react": "off",
     "react/rules-of-hooks": "error",
     "react/exhaustive-deps": "warn"
   },
