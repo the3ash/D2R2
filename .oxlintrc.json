@@ -4,12 +4,12 @@
   "env": {
     "browser": true
   },
+  "globals": {
+    "chrome": "readonly"
+  },
   "categories": {
     "correctness": "error",
     "suspicious": "warn"
-  },
-  "globals": {
-    "chrome": "readonly"
   },
   "rules": {
     "eslint/no-unused-vars": [
