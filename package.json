@@ -27,7 +27,7 @@
     "@types/react": "^19.2.15",
     "@types/react-dom": "^19.2.3",
     "@wxt-dev/module-react": "^1.2.2",
-    "oxfmt": "^0.50.0",
+    "oxfmt": "^0.51.0",
     "oxlint": "^1.65.0",
     "typescript": "^6.0.3",
     "wxt": "^0.20.26"
