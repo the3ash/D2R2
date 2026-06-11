@@ -57,6 +57,9 @@ jobs:
         run: pnpm lint
         continue-on-error: true
 
+      - name: Test
+        run: pnpm test
+
       - name: Type check
         run: tsc --noEmit
 

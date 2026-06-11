@@ -236,6 +236,8 @@ async function handleFileRequest(request, env) {
   }
 }
 
+export { allocateStoragePath, generatePublicUrl, isValidCloudflareId, validateImageFormat }
+
 // Main request handler
 export default {
   async fetch(request, env) {
