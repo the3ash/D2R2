@@ -54,6 +54,27 @@ function generatePublicUrl(env, storagePath) {
   return `https://${env.R2_PUBLIC_DOMAIN}/${storagePath}`
 }
 
+async function allocateStoragePath(bucket, folderName, fileName) {
+  const prefix = folderName ? `${folderName}/` : ''
+  const dotIndex = fileName.lastIndexOf('.')
+  const baseName = dotIndex > 0 ? fileName.slice(0, dotIndex) : fileName
+  const extension = dotIndex > 0 ? fileName.slice(dotIndex) : ''
+
+  // Default behavior: keep the uploaded image filename and append a suffix on conflict.
+  // Example alternative for timestamp-based keys:
+  //   const timestampName = `${Date.now()}${extension || '.jpg'}`
+  //   return allocateStoragePath(bucket, folderName, timestampName)
+  // This is useful if you want R2 object names to sort chronologically by key.
+  for (let suffix = 0; ; suffix += 1) {
+    const candidateName = suffix === 0 ? fileName : `${baseName}_${suffix}${extension}`
+    const storagePath = `${prefix}${candidateName}`
+
+    if (!(await bucket.head(storagePath))) {
+      return storagePath
+    }
+  }
+}
+
 // Helper for error responses
 function errorResponse(message, status = 400, origin = '*') {
   return new Response(
@@ -178,7 +199,7 @@ async function handleFileRequest(request, env) {
 
     // Generate storage path
     const fileName = file.name
-    const storagePath = folderName ? `${folderName}/${fileName}` : fileName
+    const storagePath = await allocateStoragePath(env.BUCKET_NAME, folderName, fileName)
 
     console.log(`Uploading: ${storagePath} (${file.size} bytes, ${formatValidation.detectedType})`)
 

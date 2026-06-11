@@ -43,6 +43,8 @@ This extension requires a Cloudflare Worker. See [worker_sample.js](./worker_sam
 
 4. Go to Worker → "Quick edit" → paste the worker code → "Save and deploy"
 
+\*The sample Worker controls the final R2 object name, by default it keeps the uploaded filename and appends a suffix when needed to avoid overwrites.
+
 ### 3. Extension Configuration
 
 1. Open the extension popup

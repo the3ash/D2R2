@@ -94,8 +94,7 @@ export function createUploadFormData(
         ? originalFilename.split('.').pop()
         : imageBlob.type.split('/').pop()) || 'jpg'
 
-    const timestamp = Date.now()
-    filename = `image_${timestamp}.${fileExtension}`
+    filename = originalFilename || `downloaded-image.${fileExtension}`
   } else {
     filename = imageUrlOrFilename
   }
