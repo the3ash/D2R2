@@ -9,6 +9,7 @@ import './style.css'
 
 export default function App() {
   const [config, setConfig] = useState<AppConfig | null>(null)
+  const [savedConfig, setSavedConfig] = useState<AppConfig | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
@@ -20,6 +21,7 @@ export default function App() {
       try {
         const data = await getConfig()
         setConfig(data)
+        setSavedConfig(data)
         setError(null)
 
         if (data && data.workerUrl && data.cloudflareId) {
@@ -41,11 +43,23 @@ export default function App() {
     return !!(config?.workerUrl?.trim() && config?.cloudflareId?.trim())
   }
 
+  const isFormDirty = (): boolean => {
+    if (!config || !savedConfig) return false
+
+    return (
+      config.cloudflareId !== savedConfig.cloudflareId ||
+      config.workerUrl !== savedConfig.workerUrl ||
+      config.folderPath !== savedConfig.folderPath ||
+      config.hideRoot !== savedConfig.hideRoot ||
+      config.imageQuality !== savedConfig.imageQuality
+    )
+  }
+
   // Save configuration and test connection
   const saveAndTestConnection = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!config) return
+    if (!config || !isFormDirty()) return
 
     if (!config.workerUrl?.trim() || !config.cloudflareId?.trim()) {
       return
@@ -58,11 +72,16 @@ export default function App() {
       let workerUrl = config.workerUrl.trim()
       if (!workerUrl.startsWith('http://') && !workerUrl.startsWith('https://')) {
         workerUrl = `https://${workerUrl}`
-        setConfig((prev) => (prev ? { ...prev, workerUrl } : null))
+      }
+
+      const normalizedConfig = {
+        ...config,
+        cloudflareId: config.cloudflareId.trim(),
+        workerUrl,
       }
 
       try {
-        await testWorkerConnection(workerUrl, config.cloudflareId.trim(), location.origin)
+        await testWorkerConnection(workerUrl, normalizedConfig.cloudflareId, location.origin)
       } catch (err) {
         if (err instanceof Error && err.name === 'AbortError') {
           throw new Error('Connection timeout, try again', { cause: err })
@@ -70,7 +89,9 @@ export default function App() {
         throw err
       }
 
-      await saveConfig(config)
+      const persistedConfig = await saveConfig(normalizedConfig)
+      setConfig(persistedConfig)
+      setSavedConfig(persistedConfig)
       setIsViewMode(true)
     } catch (err) {
       setError(
@@ -88,6 +109,14 @@ export default function App() {
   // Switch to edit mode
   const handleEdit = () => {
     setIsViewMode(false)
+  }
+
+  const handleCancel = () => {
+    if (!savedConfig) return
+
+    setConfig(savedConfig)
+    setError(null)
+    setIsViewMode(true)
   }
 
   if (loading) {
@@ -122,6 +151,8 @@ export default function App() {
           isSaving={isSaving}
           error={error}
           isFormSubmittable={isFormSubmittable()}
+          isFormDirty={isFormDirty()}
+          onCancel={savedConfig?.workerUrl && savedConfig.cloudflareId ? handleCancel : undefined}
           onSubmit={saveAndTestConnection}
         />
       )}

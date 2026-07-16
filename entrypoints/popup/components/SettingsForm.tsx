@@ -9,6 +9,8 @@ type Props = {
   isSaving: boolean
   error: string | null
   isFormSubmittable: boolean
+  isFormDirty: boolean
+  onCancel?: () => void
   onSubmit: (e: React.FormEvent) => void | Promise<void>
 }
 
@@ -25,9 +27,12 @@ export function SettingsForm({
   isSaving,
   error,
   isFormSubmittable,
+  isFormDirty,
+  onCancel,
   onSubmit,
 }: Props) {
   const qualityValue = String(config?.imageQuality ?? 0)
+  const canSave = isFormSubmittable && isFormDirty && !isSaving
 
   return (
     <form onSubmit={onSubmit} autoComplete="off">
@@ -123,16 +128,23 @@ export function SettingsForm({
         {qualityValue !== '0' && <div className="input-help">PNG may not compress much.</div>}
       </div>
 
-      <div className="save-btn-container">
+      <div className={`save-btn-container${onCancel ? ' save-btn-container--with-cancel' : ''}`}>
         {error && <div className="error-message-text">{error}</div>}
+        {onCancel && (
+          <button
+            type="button"
+            className="cancel-btn font-body-m"
+            disabled={isSaving}
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
+        )}
         <button
           type="submit"
-          className="save-btn font-body-m"
-          disabled={isSaving || !isFormSubmittable}
-          style={{
-            opacity: isFormSubmittable ? 1 : 0.24,
-            cursor: isFormSubmittable ? 'pointer' : 'not-allowed',
-          }}
+          className={`save-btn font-body-m${isSaving ? ' save-btn--saving' : ''}`}
+          disabled={!canSave}
+          aria-busy={isSaving}
         >
           {isSaving ? <SpinnerIcon className="loading-icon" /> : 'Save'}
         </button>

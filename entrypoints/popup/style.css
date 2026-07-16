@@ -363,8 +363,7 @@ input::placeholder {
 
 .save-btn {
   width: 100%;
-  height: 32px;
-  margin-top: 8px;
+  height: 36px;
   background-color: var(--orange);
   color: var(--text-oncolor);
   border: none;
@@ -382,11 +381,54 @@ input::placeholder {
 .save-btn-container {
   position: relative;
   width: 100%;
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.save-btn-container--with-cancel {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cancel-btn {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 14px;
+  corner-shape: squircle;
+  color: var(--fg);
+  background-color: transparent;
+  border: 1px solid color-mix(in srgb, var(--fg) 8%, transparent);
+  cursor: pointer;
+  transition: border-color 0.15s ease-out;
+}
+
+.cancel-btn:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--fg) 16%, transparent);
+}
+
+.cancel-btn:focus {
+  outline: none;
+}
+
+.cancel-btn:focus-visible:not(:disabled) {
+  border-color: color-mix(in srgb, var(--fg) 36%, transparent);
+}
+
+.cancel-btn:disabled,
+.save-btn:disabled:not(.save-btn--saving) {
+  opacity: 0.24;
+  cursor: not-allowed;
+}
+
+.save-btn--saving {
+  cursor: not-allowed;
 }
 
 .error-message-text {
   position: absolute;
-  bottom: 40px;
+  bottom: 44px;
   left: 0;
   right: 0;
   color: var(--orange);
