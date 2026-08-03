@@ -33,8 +33,9 @@ function determineTargetFolder(
 
   if (menuId.startsWith(FOLDER_PREFIX)) {
     const folderIndex = parseInt(menuId.substring(FOLDER_PREFIX.length))
-    if (folders && folderIndex < folders.length) {
-      return { valid: true, folder: folders[folderIndex] }
+    const folder = folders[folderIndex]
+    if (folder !== undefined) {
+      return { valid: true, folder }
     }
     return { valid: false, folder: null, error: 'Invalid folder index' }
   }
@@ -198,9 +199,10 @@ export async function initializeExtension() {
               active: true,
               currentWindow: true,
             })
-            if (visibleTabs && visibleTabs.length > 0 && visibleTabs[0].id) {
+            const activeTab = visibleTabs[0]
+            if (activeTab?.id !== undefined) {
               // Check if current tab can be injected
-              const tabId = visibleTabs[0].id as number
+              const tabId = activeTab.id
               console.log(`Attempting to send test toast to tab ${tabId}`)
 
               // First check if content script is ready

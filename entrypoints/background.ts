@@ -121,10 +121,11 @@ export default defineBackground(() => {
       // Get active tab in focused window
       try {
         const tabs = await chrome.tabs.query({ active: true, windowId })
-        if (tabs && tabs.length > 0 && tabs[0].id) {
-          console.log('Reinitializing for focused window active tab:', tabs[0].id)
-          pageStateManager.setActiveTab(tabs[0].id, tabs[0].url)
-          await reinitializeForTab(tabs[0].id)
+        const activeTab = tabs[0]
+        if (activeTab?.id !== undefined) {
+          console.log('Reinitializing for focused window active tab:', activeTab.id)
+          pageStateManager.setActiveTab(activeTab.id, activeTab.url)
+          await reinitializeForTab(activeTab.id)
 
           // Special handling to ensure menu is working
           extensionStateManager.resetState()
