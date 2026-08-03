@@ -1,4 +1,4 @@
-import { ToastType } from '../state/types'
+import type { ToastType } from '../state/types'
 import { TOAST_STATUS } from '../state/types'
 
 // Helper to show toast notification in web page

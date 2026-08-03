@@ -6,7 +6,8 @@ import { TOAST_STATUS } from '../state/types'
 import { UploadState, uploadTaskManager } from '../state'
 import { showNotification, showPageToast } from '../notifications'
 import { handleError } from '../helpers/logger'
-import { getConfig, AppConfig } from '../storage'
+import { getConfig } from '../storage'
+import type { AppConfig } from '../storage'
 import { parseFolderPath, ROOT_FOLDER_ID, FOLDER_PREFIX, PARENT_MENU_ID } from '../menu'
 
 // Validate configuration for image upload
@@ -104,9 +105,10 @@ export async function determineTargetFolderWithConfig(
   if (typeof info.menuItemId === 'string' && info.menuItemId.startsWith(FOLDER_PREFIX)) {
     const folderIndex = parseInt(info.menuItemId.substring(FOLDER_PREFIX.length))
     const folders = parseFolderPath(config.folderPath)
+    const folder = folders[folderIndex]
 
-    if (folders && folderIndex < folders.length) {
-      targetFolder = folders[folderIndex]
+    if (folder !== undefined) {
+      targetFolder = folder
       console.log(`Selected folder: ${targetFolder}`)
       uploadTaskManager.setTaskFolder(taskId, targetFolder)
       return { isValid: true, targetFolder }

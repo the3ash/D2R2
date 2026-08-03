@@ -92,11 +92,12 @@ class NotificationManager {
 
     // Find existing notification
     const existingIndex = this.queue.findIndex((item) => item.id === id)
+    const existingNotification = this.queue[existingIndex]
 
-    if (existingIndex >= 0) {
+    if (existingNotification) {
       // Update existing notification
-      const updatedNotification = {
-        ...this.queue[existingIndex],
+      const updatedNotification: NotificationItem = {
+        ...existingNotification,
         title,
         message,
         type,
@@ -104,8 +105,8 @@ class NotificationManager {
         showSystem,
         showPage,
         direction,
-        processed: forceShow ? false : this.queue[existingIndex].processed, // If forceShow, mark as unprocessed to force display
-        timestamp: forceShow ? Date.now() : this.queue[existingIndex].timestamp, // If forceShow, update timestamp
+        processed: forceShow ? false : existingNotification.processed,
+        timestamp: forceShow ? Date.now() : existingNotification.timestamp,
       }
 
       // Replace notification in queue
@@ -202,8 +203,10 @@ class NotificationManager {
       // Remove oldest unprocessed notification
       const oldestIndex = this.queue.findIndex((item) => !item.processed)
       if (oldestIndex >= 0) {
-        console.log(`Queue full, removing oldest notification: ${this.queue[oldestIndex].id}`)
-        this.queue.splice(oldestIndex, 1)
+        const [oldestNotification] = this.queue.splice(oldestIndex, 1)
+        if (oldestNotification) {
+          console.log(`Queue full, removing oldest notification: ${oldestNotification.id}`)
+        }
       } else {
         // If all notifications are processed, clean up half of them
         console.log(`Queue full with all processed, removing oldest half`)
@@ -251,15 +254,14 @@ class NotificationManager {
     }
 
     // Find first unprocessed notification
-    const notificationIndex = this.queue.findIndex((item) => !item.processed)
-    if (notificationIndex === -1) {
+    const notification = this.queue.find((item) => !item.processed)
+    if (!notification) {
       return // All notifications are processed
     }
 
     // Mark as processing
     this.processing = true
 
-    const notification = this.queue[notificationIndex]
     console.log(`Processing notification: ${notification.id}, type: ${notification.type}`)
 
     // Update timestamp
