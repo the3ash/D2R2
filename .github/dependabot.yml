@@ -6,6 +6,8 @@ updates:
     schedule:
       interval: 'weekly'
       day: 'monday'
+    cooldown:
+      default-days: 7
     assignees:
       - 'the3ash'
     commit-message:
@@ -41,6 +43,8 @@ updates:
     schedule:
       interval: 'weekly'
       day: 'monday'
+    cooldown:
+      default-days: 7
     assignees:
       - 'the3ash'
     commit-message:
