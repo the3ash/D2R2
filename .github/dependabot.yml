@@ -26,11 +26,7 @@ updates:
         update-types: ['minor', 'patch']
       # Build tools
       build-tools:
-        patterns: ['vite', '@vitejs/*', 'typescript']
-        update-types: ['minor', 'patch']
-      # Linting & formatting
-      code-quality:
-        patterns: ['eslint*', 'prettier*', '@eslint/*', '@typescript-eslint/*', 'typescript-eslint']
+        patterns: ['vite', 'vite-plus', '@voidzero-dev/vite-plus-*', '@vitejs/*', 'typescript']
         update-types: ['minor', 'patch']
       # Chrome types
       chrome-types:
