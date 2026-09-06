@@ -34,42 +34,36 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v6
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1.18.0
         with:
-          version: latest
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 'lts/*'
-          cache: 'pnpm'
+          node-version-file: package.json
+          cache: true
+          run-install: false
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --prefer-offline
+        run: vp install --frozen-lockfile --prefer-offline
 
-      - name: Format check
-        run: pnpm format:check
-        continue-on-error: true
-
-      - name: Lint
-        run: pnpm lint
-        continue-on-error: true
+      - name: Check
+        run: vp run check
 
       - name: Test
-        run: pnpm test
+        run: vp run test
 
-      - name: Type check
-        run: tsc --noEmit
+      - name: Build Chrome extension
+        run: vp run build
 
-      - name: Build
-        run: pnpm build
+      - name: Build Firefox extension
+        run: vp run build:firefox
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: dist
-          path: dist/
+          name: extensions
+          path: |
+            .output/chrome-mv3/
+            .output/firefox-mv2/
+          if-no-files-found: error
           retention-days: 7
 
   auto-merge:
