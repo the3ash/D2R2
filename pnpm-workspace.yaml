@@ -2,11 +2,12 @@ allowBuilds:
   esbuild: false
   spawn-sync: false
 catalog:
-  vite: npm:@voidzero-dev/vite-plus-core@0.3.1
-  vite-plus: 1.1.0
+  # Keep Vite+, its core alias, and the Vitest override on matching toolchain versions.
+  vite: npm:@voidzero-dev/vite-plus-core@1.4.0
+  vite-plus: 1.4.0
 overrides:
   vite@*: 'catalog:'
-  vitest: 4.1.11
+  vitest@*: 5.0.5
 peerDependencyRules:
   allowAny:
     - vite
