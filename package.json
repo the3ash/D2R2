@@ -32,7 +32,7 @@
     "typescript": "^7.0.2",
     "vite": "catalog:",
     "vite-plus": "catalog:",
-    "wxt": "^0.21.4"
+    "wxt": "^0.21.5"
   },
   "devEngines": {
     "packageManager": {
